@@ -1,0 +1,14 @@
+{
+  "name": "bus-risk-prediction",
+  "version": "1.0.0",
+  "description": "AI公交隐患预测系统",
+  "scripts": {
+    "start": "serve",
+    "dev": "serve -l 3000 --cors",
+    "build": "echo 'No build step required'",
+    "extract": "node scripts/extract-data.js"
+  },
+  "dependencies": {
+    "serve": "^14.2.1"
+  }
+} 
