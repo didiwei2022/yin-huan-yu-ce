@@ -1,5 +1,5 @@
 function initMap() {
-    var map = new AMap.Map("container", {
+    const map = new AMap.Map("container", {
         resizeEnable: true,
         center: [117.19, 34.26],
         zoom: 12
@@ -12,6 +12,8 @@ function initMap() {
     loadHeatmapData().then(data => {
         initHeatmap(map, data);
     });
+
+    return map;
 }
 
 function loadHeatmapData() {

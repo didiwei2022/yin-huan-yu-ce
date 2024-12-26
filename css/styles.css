@@ -19,4 +19,205 @@ html, body, #container {
     z-index: 9999;
     border-radius: 8px;
     line-height: 50px;
+}
+
+/* 修改风险排序列表样式 */
+.risk-ranking {
+    position: fixed;
+    top: 70px;
+    left: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    width: 220px;
+    max-height: 35vh;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+/* 添加违章路段面板样式 */
+.violation-hotspots {
+    position: fixed;
+    top: calc(70px + 40vh);
+    left: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    width: 220px;
+    z-index: 1000;
+}
+
+/* 共用的面板标题样式 */
+.panel-title {
+    margin: 0 0 12px 0;
+    color: #333;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* 共用的表格样式 */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.data-table th, .data-table td {
+    padding: 6px;
+    text-align: left;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.data-table th {
+    font-weight: bold;
+    color: #666;
+}
+
+.data-table tr:hover {
+    background: rgba(0,0,0,0.05);
+    cursor: pointer;
+}
+
+/* 信息窗体样式 */
+.info-window {
+    padding: 8px;
+    font-size: 13px;
+}
+
+.info-window h4 {
+    margin: 0 0 8px 0;
+    color: #333;
+}
+
+.info-window p {
+    margin: 4px 0;
+    color: #666;
+}
+
+/* 搜索框容器 */
+.search-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.search-input {
+    width: 300px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+}
+
+.search-input:focus {
+    border-color: #409EFF;
+}
+
+.search-btn {
+    padding: 8px 15px;
+    background: #409EFF;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.search-btn:hover {
+    background: #66b1ff;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+    #title {
+        width: 90%;
+        font-size: 18px;
+    }
+
+    .risk-ranking, .violation-hotspots {
+        width: calc(100% - 40px);
+        left: 10px;
+        right: 10px;
+    }
+
+    .risk-ranking {
+        max-height: 30vh;
+    }
+
+    .violation-hotspots {
+        top: calc(70px + 35vh);
+    }
+
+    .weather-widgets {
+        width: calc(100% - 40px);
+        right: 10px;
+    }
+
+    .weather-status {
+        bottom: 10px;
+    }
+
+    .weather-status {
+        left: 10px;
+        right: auto;
+    }
+
+    /* 优化表格在移动端的显示 */
+    .data-table {
+        font-size: 12px;
+    }
+
+    .data-table th, .data-table td {
+        padding: 4px;
+    }
+
+    .search-container {
+        width: calc(100% - 40px);
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .search-input {
+        width: 100%;
+    }
+} 
+
+/* 定位消息提示样式 */
+.location-message {
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: white;
+    z-index: 2000;
+    animation: fadeInOut 2s ease-in-out;
+}
+
+.location-message.success {
+    background-color: rgba(64, 158, 255, 0.9);
+}
+
+.location-message.error {
+    background-color: rgba(245, 108, 108, 0.9);
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translate(-50%, -20px); }
+    15% { opacity: 1; transform: translate(-50%, 0); }
+    85% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, -20px); }
 } 

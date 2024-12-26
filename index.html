@@ -1,15 +1,36 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
-    <title>AI神经网络公交隐患预测系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>徐州东部公交隐患预测系统 - AI神经网络分析</title>
+    <meta name="description" content="徐州东部公交隐患预测系统，基于AI神经网络分析，提供实时天气监测、违章高发路段分析和风险预警等功能。">
+    <meta name="keywords" content="徐州公交,隐患预测,AI分析,天气监测,违章分析,交通安全">
+    <meta name="author" content="顾迪">
+    <!-- Open Graph 标签 -->
+    <meta property="og:title" content="徐州东部公交隐患预测系统">
+    <meta property="og:description" content="基于AI神经网络的公交安全预测分析系统">
+    <meta property="og:type" content="website">
+    <!-- 添加网站图标 -->
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <!-- 原有的样式表 -->
     <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/weather-controls.css">
+    <meta name="referrer" content="no-referrer">
 </head>
 <body>
     <div id="container"></div>
     <div id="title"><b>AI神经网络公交隐患预测系统</b></div>
+    
+    <!-- 配置脚本 -->
+    <script>
+        window.APP_CONFIG = {
+            QWEATHER_KEY: '8fb8cc9420fc4f2cb09db037d56bde99'
+        };
+    </script>
+    
+    <!-- 其他脚本 -->
     <script type="text/javascript">
         window._AMapSecurityConfig = {
             securityJsCode: '%AMAP_SECURITY_CODE%'
@@ -17,8 +38,29 @@
     </script>
     <script src="https://webapi.amap.com/maps?v=1.4.15&key=%AMAP_KEY%"></script>
     <script src="/js/map.js"></script>
+    <script src="/js/weather.js"></script>
+    <script src="/js/risk-analysis.js"></script>
+    <script src="/js/location-search.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', initMap);
+        let map;
+        document.addEventListener('DOMContentLoaded', () => {
+            map = initMap();
+            setTimeout(() => {
+                try {
+                    const weatherSystem = new WeatherSystem(map);
+                    // 加载热力图数据后初始化风险分析
+                    fetch('/data/heatmap-data.json')
+                        .then(response => response.json())
+                        .then(json => {
+                            new RiskAnalysis(map, json.data);
+                        });
+                    // 初始化位置搜索
+                    new LocationSearch(map);
+                } catch (error) {
+                    console.error('系统初始化失败:', error);
+                }
+            }, 1000);
+        });
     </script>
 </body>
 </html>
