@@ -40,7 +40,6 @@
     <script src="/js/map.js"></script>
     <script src="/js/weather.js"></script>
     <script src="/js/risk-analysis.js"></script>
-    <script src="/js/location-search.js"></script>
     <script>
         let map;
         document.addEventListener('DOMContentLoaded', () => {
@@ -54,8 +53,6 @@
                         .then(json => {
                             new RiskAnalysis(map, json.data);
                         });
-                    // 初始化位置搜索
-                    new LocationSearch(map);
                 } catch (error) {
                     console.error('系统初始化失败:', error);
                 }
