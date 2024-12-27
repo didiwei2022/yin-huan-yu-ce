@@ -18,6 +18,15 @@
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/weather-controls.css">
     <meta name="referrer" content="no-referrer">
+    <style>
+        /* 隐藏面板的样式 */
+        @media (max-width: 768px) { /* 根据需要调整屏幕宽度 */
+            .risk-ranking,
+            .violation-hotspots {
+                display: none; /* 默认隐藏面板内容 */
+            }
+        }
+    </style>
 </head>
 <body>
     <div id="container"></div>
@@ -59,5 +68,42 @@
             }, 1000);
         });
     </script>
+    <!-- 东部公交隐患排序面板 -->
+    <div class="risk-ranking">
+        <h3 class="panel-title">东部公交隐患排序</h3>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>地点</th>
+                    <th>风险指数</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- 2024年违章十大高发路段面板 -->
+    <div class="violation-hotspots">
+        <h3 class="panel-title">2024年违章十大高发路段</h3>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>地点</th>
+                    <th>次数</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${this.getViolationData().map((item, index) => `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${item.location}</td>
+                        <td>${item.count}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
 </body>
 </html>
