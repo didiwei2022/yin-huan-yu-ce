@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function(req, res) {
   console.log('[API] 请求开始:', {
     method: req.method,
     url: req.url,
