@@ -1,21 +1,32 @@
 export default async function handler(req, res) {
+  console.log('[API] 请求开始:', {
+    method: req.method,
+    url: req.url,
+    headers: req.headers,
+    body: req.body
+  });
+
   if (req.method !== 'POST') {
+    console.log('[API] 非POST请求被拒绝');
     return res.status(405).json({ error: '只支持POST请求' });
   }
 
   try {
     const { message } = req.body;
+    console.log('[API] 收到消息:', message);
 
     if (!message) {
+      console.log('[API] 消息为空');
       return res.status(400).json({ error: '消息内容不能为空' });
     }
 
-    // 设置响应头以支持流式传输
+    console.log('[API] 设置响应头');
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive'
     });
+    console.log('[API] 响应头设置完成');
 
     const response = await fetch('https://tbnx.plus7.plus/v1/chat/completions', {
       method: 'POST',
@@ -46,8 +57,17 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error?.message || '请求失败');
+      const errorInfo = {
+        status: response.status,
+        statusText: response.statusText,
+        error: error,
+        url: response.url,
+        headers: Object.fromEntries(response.headers.entries())
+      };
+      console.error('[API] DeepSeek请求失败:', errorInfo);
+      throw new Error(`DeepSeek API请求失败: ${response.status} ${error.error?.message || response.statusText}`);
     }
+    console.log('[API] DeepSeek请求成功');
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -86,7 +106,17 @@ export default async function handler(req, res) {
 
     res.end();
   } catch (error) {
-    console.error('API 错误:', error);
+    const errorInfo = {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      env: process.env.NODE_ENV,
+      vercelEnv: process.env.VERCEL_ENV,
+      region: process.env.VERCEL_REGION,
+      timestamp: new Date().toISOString(),
+      apiKey: process.env.DEEPSEEK_API_KEY ? '已设置' : '未设置'
+    };
+    console.error('[API] 错误:', errorInfo);
     res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
     res.end();
   }
