@@ -1,4 +1,4 @@
-const handler = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: '只支持POST请求' });
   }
@@ -91,5 +91,3 @@ const handler = async (req, res) => {
     res.end();
   }
 };
-
-export default handler;
