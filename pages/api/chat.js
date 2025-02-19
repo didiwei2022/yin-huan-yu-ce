@@ -17,11 +17,21 @@ const handler = async (req, res) => {
       'Connection': 'keep-alive'
     });
 
+    // 获取API密钥，优先使用环境变量中的密钥，如果没有则使用默认密钥
+    const apiKey = process.env.DEEPSEEK_API_KEY || 'sk-PUtZrBTu6ENsjgpjQMJWS3zs1uu7Bru0QfIeCJB3LQuAWuGc';
+
+    // 打印环境变量状态（不打印完整的密钥）
+    console.log('环境检查:', {
+      hasEnvKey: !!process.env.DEEPSEEK_API_KEY,
+      envKeyLength: process.env.DEEPSEEK_API_KEY?.length || 0,
+      nodeEnv: process.env.NODE_ENV
+    });
+
     const response = await fetch('https://tbnx.plus7.plus/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer sk-PUtZrBTu6ENsjgpjQMJWS3zs1uu7Bru0QfIeCJB3LQuAWuGc`
+        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY || 'sk-PUtZrBTu6ENsjgpjQMJWS3zs1uu7Bru0QfIeCJB3LQuAWuGc'}`
       },
       body: JSON.stringify({
         model: "deepseek-reasoner",
@@ -46,7 +56,25 @@ const handler = async (req, res) => {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error?.message || '请求失败');
+      console.error('请求失败:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: error,
+        url: response.url
+      });
+
+      let errorMessage = '请求失败';
+      
+      // 根据不同的错误类型返回具体的错误信息
+      if (response.status === 401) {
+        errorMessage = 'API认证失败，请检查API密钥是否有效';
+      } else if (response.status === 403) {
+        errorMessage = 'API访问被拒绝，可能是密钥权限不足';
+      } else if (response.status === 429) {
+        errorMessage = 'API调用频率超限，请稍后再试';
+      }
+
+      throw new Error(`${errorMessage} (${response.status}: ${error.error?.message || response.statusText})`);
     }
 
     const reader = response.body.getReader();
@@ -86,8 +114,21 @@ const handler = async (req, res) => {
 
     res.end();
   } catch (error) {
-    console.error('API 错误:', error);
-    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    // 记录详细的错误信息
+    console.error('API 错误:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      env: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+
+    // 处理网络错误
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      res.write(`data: ${JSON.stringify({ error: '网络连接失败，请检查网络连接' })}\n\n`);
+    } else {
+      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    }
     res.end();
   }
 };
