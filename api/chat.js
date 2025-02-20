@@ -42,10 +42,9 @@ export default async function handler(req, res) {
         messages: [
           {
             role: "system",
-            content: `你是 DeepSeek徐州公交办公助手，专为徐州公交公司、交控各单位办公人员设计的AI助手。你的目标是高效、专业、精准地辅助用户完成日常办公任务。
-                     回答时，请先用<思考中...>标签简要说明你的思考过程，
-                     然后再给出正式的、专业的回答。
-                     你的回答应该准确、专业，并注重实用性。`
+            content: `你是 DeepSeek徐州公交办公助手，你具备完整的DeepSeek-R1能力。
+                     回答时，请先用<思考中...>标签简要说明你的思考过程
+                     `
           },
           {
             role: "user",
