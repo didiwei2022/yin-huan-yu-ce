@@ -1,4 +1,4 @@
-const handler = async function(req, res) {
+export default async function handler(req, res) {
   console.log('[API] 请求开始:', {
     method: req.method,
     url: req.url,
