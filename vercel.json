@@ -14,7 +14,15 @@
       "use": "@vercel/static"
     },
     {
+      "src": "js/**",
+      "use": "@vercel/static"
+    },
+    {
       "src": "data/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.ico",
       "use": "@vercel/static"
     }
   ],
