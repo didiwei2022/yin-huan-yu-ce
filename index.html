@@ -343,7 +343,7 @@
     <!-- DeepSeek对话框 -->
     <div class="chat-container" id="chatContainer">
         <div class="chat-header">
-            <div class="chat-title">DeepSeek交控办公助手</div>
+            <div class="chat-title">DeepSeek徐州公交办公助手</div>
             <div class="chat-controls">
                 <button class="minimize-btn" id="minimizeChat">−</button>
             </div>
@@ -418,100 +418,59 @@
 
             // 添加欢迎消息
             appendMessage('assistant', `<think>准备就绪</think>
-我是 DeepSeek交控办公助手，很高兴见到你！`);
+我是 DeepSeek徐州公交办公助手，很高兴见到你！`);
 
             async function sendMessage() {
                 const message = chatInput.value.trim();
                 if (!message) return;
 
-                // 添加用户消息到界面
-                appendMessage('user', message);
+                // 禁用输入和发送按钮
                 chatInput.value = '';
+                chatInput.disabled = true;
                 sendButton.disabled = true;
 
-                // 添加思考中的提示
-                const thinkingMessage = appendMessage('assistant thinking', '正在思考...');
-                const startTime = Date.now();
-                
-                const timer = setInterval(() => {
-                    const seconds = Math.floor((Date.now() - startTime) / 1000);
-                    thinkingMessage.textContent = `正在思考...（${seconds}秒）`;
-                }, 1000);
+                // 显示用户消息
+                appendMessage('user', message);
 
                 try {
                     const response = await fetch('/api/chat', {
                         method: 'POST',
                         headers: {
-                            'Accept': 'text/event-stream',
-                            'Content-Type': 'application/json',
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({ message })
                     });
 
                     if (!response.ok) {
-                        throw new Error('请求失败');
+                        throw new Error('API 请求失败');
                     }
 
-                    // 移除思考中的消息
-                    thinkingMessage.remove();
-                    clearInterval(timer);
-
-                    // 创建新的消息容器
-                    const messageDiv = document.createElement('div');
-                    messageDiv.className = 'message assistant';
-                    messagesContainer.appendChild(messageDiv);
-
-                    let fullResponse = '';
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
+                    let assistantMessage = '';
+                    let isFirstChunk = true;
 
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
 
                         const chunk = decoder.decode(value);
-                        const lines = chunk.split('\n');
-
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6);
-                                if (data === '[DONE]') continue;
-
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    if (parsed.error) {
-                                        throw new Error(parsed.error);
-                                    }
-                                    if (parsed.content) {
-                                        fullResponse += parsed.content;
-                                        // 处理思考过程和回答
-                                        const thinkMatch = fullResponse.match(/<think>(.*?)<\/think>/s);
-                                        if (thinkMatch) {
-                                            const thinking = thinkMatch[1].trim();
-                                            const answer = fullResponse.replace(/<think>.*?<\/think>/s, '').trim();
-                                            
-                                            messageDiv.innerHTML = `
-                                                <div class="thinking-indicator">💭 思考过程：${thinking}</div>
-                                                <div class="answer">${answer}</div>
-                                            `;
-                                        } else {
-                                            messageDiv.textContent = fullResponse;
-                                        }
-                                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                                    }
-                                } catch (e) {
-                                    console.error('解析响应数据失败:', e);
-                                }
-                            }
+                        if (isFirstChunk) {
+                            appendMessage('assistant', '');
+                            isFirstChunk = false;
                         }
+                        assistantMessage += chunk;
+                        updateLastMessage(assistantMessage);
                     }
+
                 } catch (error) {
-                    console.error('错误详情:', error);
-                    thinkingMessage.className = 'message error';
-                    thinkingMessage.textContent = `错误: ${error.message}`;
-                    clearInterval(timer);
+                    console.error('发送消息时出错:', error);
+                    appendMessage('error', '抱歉，发送消息时出现错误。请稍后重试。');
                 } finally {
+                    // 重新启用输入和发送按钮
+                    chatInput.disabled = false;
                     sendButton.disabled = false;
+                    chatInput.focus();
                 }
             }
 
@@ -545,6 +504,13 @@
                 messagesContainer.appendChild(messageDiv);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 return messageDiv;
+            }
+
+            function updateLastMessage(content) {
+                const lastMessage = messagesContainer.lastChild;
+                if (lastMessage && lastMessage.classList.contains('assistant')) {
+                    lastMessage.innerHTML = content;
+                }
             }
 
             sendButton.addEventListener('click', sendMessage);

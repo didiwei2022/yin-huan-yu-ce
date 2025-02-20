@@ -1,4 +1,4 @@
-module.exports = async function(req, res) {
+const handler = async function(req, res) {
   console.log('[API] 请求开始:', {
     method: req.method,
     url: req.url,
@@ -39,8 +39,8 @@ module.exports = async function(req, res) {
         messages: [
           {
             role: "system",
-            content: `你是 DeepSeek交控办公助手，专为徐州公交公司、交控部门及相关办公人员 设计的 AI 助手。你的目标是高效、专业、精准地辅助用户完成日常办公任务。
-                     回答时，请先用<think>标签简要说明你的思考过程，
+            content: `你是 DeepSeek徐州公交办公助手，专为徐州公交公司、交控各单位办公人员设计的AI助手。你的目标是高效、专业、精准地辅助用户完成日常办公任务。
+                     回答时，请先用<思考中...>标签简要说明你的思考过程，
                      然后再给出正式的、专业的回答。
                      你的回答应该准确、专业，并注重实用性。`
           },
@@ -121,3 +121,5 @@ module.exports = async function(req, res) {
     res.end();
   }
 };
+
+export default handler;
