@@ -423,10 +423,11 @@
 我是 DeepSeek徐州公交办公助手，很高兴见到你！`);
 
             async function sendMessage(retryCount = 0) {
+                // 移除最大响应长度限制
                 console.log(`[${new Date().toISOString()}] 开始发送消息，重试次数: ${retryCount}`);
                 const maxRetries = 3;
-                const timeout = 60000; // 增加到 60 秒超时
-                const noDataTimeout = 15000; // 增加到 15 秒无数据超时
+                const timeout = 120000; // 增加到 120 秒超时
+                const noDataTimeout = 30000; // 增加到 30 秒无数据超时
                 
                 const message = chatInput.value.trim();
                 if (!message) return;
@@ -506,6 +507,7 @@
                                         }
 
                                         if (parsed.content) {
+// 移除长度检查
                                             console.log(`[${new Date().toISOString()}] 收到内容更新，长度: ${parsed.content.length}`);
                                             fullResponse += parsed.content;
                                             

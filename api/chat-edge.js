@@ -75,7 +75,7 @@ export default async function handler(req) {
       for (let i = 0; i < maxRetries; i++) {
         try {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 60000); // 增加超时时间到60秒
+          const timeout = setTimeout(() => controller.abort(), 120000); // 增加超时时间到120秒 // 增加超时时间到60秒
 
           logWithTimestamp(`尝试第 ${i + 1} 次请求...`);
           logWithTimestamp(`尝试第 ${i + 1} 次请求，消息长度: ${options.body.length}`);
@@ -118,6 +118,9 @@ export default async function handler(req) {
       },
       body: JSON.stringify({
         model: "deepseek-reasoner",
+        temperature: 0.8,
+        max_tokens: 16000, // 增加token限制，支持更长回复
+        presence_penalty: 0.1, // 降低重复惩罚
         messages: [
           {
             role: "system",
