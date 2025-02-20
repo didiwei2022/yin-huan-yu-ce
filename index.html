@@ -422,7 +422,14 @@
             appendMessage('assistant', `<think>准备就绪</think>
 我是 DeepSeek徐州公交办公助手，很高兴见到你！`);
 
-            async function sendMessage(retryCount = 0) {
+            // 前端日志函数
+function logWithTimestamp(type, message, data = {}) {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [${type}]`, message, data);
+}
+
+async function sendMessage(retryCount = 0) {
+    logWithTimestamp('REQUEST', '开始发送消息', { retryCount });
                 // 移除最大响应长度限制
                 console.log(`[${new Date().toISOString()}] 开始发送消息，重试次数: ${retryCount}`);
                 const maxRetries = 3;
@@ -445,6 +452,7 @@
                 let noDataTimeoutId;
 
                 try {
+                    logWithTimestamp('FETCH', '发起API请求', { messageLength: message.length });
                     const response = await fetch('/api/chat', {
                         method: 'POST',
                         headers: {
@@ -476,7 +484,13 @@
                     while (true) {
                         try {
                             console.log(`[${new Date().toISOString()}] 准备读取数据块...`);
+                            logWithTimestamp('STREAM', '准备读取数据块');
                             const { done, value } = await reader.read();
+                            logWithTimestamp('STREAM', '读取数据块完成', {
+                                done,
+                                valueSize: value ? value.length : 0,
+                                totalResponse: fullResponse.length
+                            });
                             console.log(`[${new Date().toISOString()}] 读取数据块完成, done: ${done}, 数据大小: ${value ? value.length : 0}`);
                             
                             if (done) {
@@ -507,6 +521,10 @@
                                         }
 
                                         if (parsed.content) {
+                                            logWithTimestamp('CONTENT', '收到内容更新', {
+                                                contentLength: parsed.content.length,
+                                                totalLength: fullResponse.length
+                                            });
 // 移除长度检查
                                             console.log(`[${new Date().toISOString()}] 收到内容更新，长度: ${parsed.content.length}`);
                                             fullResponse += parsed.content;

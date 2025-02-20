@@ -2,7 +2,13 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  console.log('[API] 请求开始:', {
+  // 添加时间戳的日志函数
+function logWithTimestamp(type, message, data = {}) {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [${type}]`, message, data);
+}
+
+logWithTimestamp('REQUEST', '收到新请求', {
     method: req.method,
     url: req.url,
     headers: req.headers,
@@ -29,7 +35,9 @@ export default async function handler(req, res) {
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive'
     });
-    console.log('[API] 响应头设置完成');
+    logWithTimestamp('SETUP', '响应头设置完成');
+    let messageLength = 0; // 用于跟踪消息长度
+    let chunkCount = 0;   // 用于跟踪数据块数量
 
     const response = await fetch('https://tbnx.plus7.plus/v1/chat/completions', {
       method: 'POST',
