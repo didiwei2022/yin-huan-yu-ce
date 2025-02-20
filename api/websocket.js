@@ -9,7 +9,21 @@ export function initWebSocket(server) {
     wss.on('connection', (ws) => {
         console.log('New WebSocket connection');
         
-        ws.on('message', async (message) => {
+        // 添加心跳检测
+let heartbeatInterval;
+
+ws.on('message', async (message) => {
+    // 清除旧的心跳定时器
+    if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+    }
+    
+    // 设置新的心跳定时器
+    heartbeatInterval = setInterval(() => {
+        if (ws.readyState === ws.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+        }
+    }, 30000); // 每30秒发送一次心跳
             try {
                 const data = JSON.parse(message);
                 
@@ -34,12 +48,44 @@ export function initWebSocket(server) {
                     throw new Error(`API请求失败: ${response.status}`);
                 }
 
-                const reader = response.body.getReader();
+                console.log('开始读取API响应');
+const reader = response.body.getReader();
+let streamStartTime = Date.now();
                 const decoder = new TextDecoder();
                 let buffer = '';
                 
                 while (true) {
                     const { done, value } = await reader.read();
+const chunk = decoder.decode(value);
+
+// 解析每个数据块
+try {
+    const lines = chunk.split('\n');
+    for (const line of lines) {
+        if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6);
+            if (jsonStr.trim() === '[DONE]') {
+                console.log('收到流结束标记');
+                continue;
+            }
+            const jsonData = JSON.parse(jsonStr);
+            if (jsonData.choices && jsonData.choices[0].delta.content) {
+                buffer += jsonData.choices[0].delta.content;
+            }
+        }
+    }
+    
+    // 每500ms发送一次数据
+    const now = Date.now();
+    if (now - streamStartTime >= 500 && buffer) {
+        console.log(`发送数据: ${buffer.length} 字符`);
+        ws.send(JSON.stringify({ type: 'content', data: buffer }));
+        buffer = '';
+        streamStartTime = now;
+    }
+} catch (error) {
+    console.error('数据解析错误:', error, '原始数据:', chunk);
+}
                     
                     if (done) {
                         if (buffer) {

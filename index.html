@@ -478,6 +478,18 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_DELAY = 1000;
 
+let messageBuffer = '';
+let lastMessageTime = Date.now();
+const MESSAGE_TIMEOUT = 10000; // 10秒没有收到消息就重连
+
+function checkConnection() {
+    const now = Date.now();
+    if (now - lastMessageTime > MESSAGE_TIMEOUT) {
+        console.warn('长时间没有收到消息，尝试重连');
+        ws.close();
+    }
+}
+
 function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -503,12 +515,24 @@ function connectWebSocket() {
         console.error('WebSocket错误:', error);
     };
     
-    ws.onmessage = (event) => {
+    // 心跳检测
+setInterval(checkConnection, 5000);
+
+ws.onmessage = (event) => {
+    lastMessageTime = Date.now(); // 更新最后收到消息的时间
         try {
             const response = JSON.parse(event.data);
             switch (response.type) {
-                case 'content':
-                    updateUI(assistantMessage, response.data);
+                case 'ping':
+    ws.send(JSON.stringify({ type: 'pong' }));
+    break;
+case 'content':
+                    messageBuffer += response.data;
+    // 使用requestAnimationFrame优化UI更新
+    requestAnimationFrame(() => {
+        assistantMessage.textContent = messageBuffer;
+        window.scrollTo(0, document.body.scrollHeight);
+    });
                     break;
                 case 'error':
                     console.error('服务器错误:', response.error);
