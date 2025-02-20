@@ -7,14 +7,15 @@ async function sleep(ms) {
 
 export default async function handler(req, res) {
   // 设置响应头优化传输
-res.setHeader('Access-Control-Allow-Origin', '*');
-res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-res.setHeader('Cache-Control', 'no-cache, no-transform');
-res.setHeader('Connection', 'keep-alive');
-res.setHeader('X-Accel-Buffering', 'no');
-res.setHeader('Transfer-Encoding', 'chunked');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.setHeader('Transfer-Encoding', 'chunked');
   res.setHeader('Access-Control-Allow-Methods', 'POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Accept-Charset', 'utf-8');
   // 添加时间戳的日志函数
 function logWithTimestamp(type, message, data = {}) {
     const timestamp = new Date().toISOString();
@@ -42,94 +43,107 @@ logWithTimestamp('REQUEST', '收到新请求', {
       return res.status(400).json({ error: '消息内容不能为空' });
     }
 
-    console.log('[API] 设置响应头');
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
-    });
-    logWithTimestamp('SETUP', '响应头设置完成');
-    // 数据传输相关变量
-    let messageLength = 0;
-    let chunkCount = 0;
-    let buffer = '';
-    let lastFlushTime = Date.now();
-    const FLUSH_INTERVAL = 500; // 每500ms刷新一次
-    const MAX_BUFFER_SIZE = 1024; // 最大缓冲区1KB
-
-    // 设置请求超时
+    logWithTimestamp('SETUP', '开始请求配置');
+    
+    // 设置请求超时和重试机制
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000); // 2分钟超时
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30秒超时
+    
+    // 数据传输相关变量
+    const FLUSH_INTERVAL = 100; // 每100ms刷新一次
+    const CHUNK_SIZE = 1024; // 最大缓冲区1KB
 
     try {
-        // 设置请求超时和重试机制
-const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 30000);
-
-try {
-    // 设置请求配置
-    const requestConfig = {
+      // 设置请求配置
+      const requestConfig = {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive'
+          'Content-Type': 'application/json',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Accept-Charset': 'utf-8',
+          'Connection': 'keep-alive'
         },
         body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: messages,
-            temperature: 0.7,
-            max_tokens: 4000,
-            stream: true
+          model: 'deepseek-chat',
+          messages: [{
+            role: 'system',
+            content: `你是 DeepSeek徐州公交助手，你具备完整的DeepSeek-R1能力。`
+          }, {
+            role: 'user',
+            content: message
+          }],
+          temperature: 0.7,
+          max_tokens: 4000,
+          stream: true,
+          response_format: { type: 'text' }
         }),
+        signal: controller.signal,
         compress: true,
         timeout: 30000
-    };
+      };
 
-    const response = await fetch('https://tbnx.plus7.plus/v1/chat/completions', requestConfig);
+      logWithTimestamp('REQUEST', '发送API请求', requestConfig);
+      const response = await fetch('https://tbnx.plus7.plus/v1/chat/completions', requestConfig);
 
-    // 检查响应状态
-    if (!response.ok) {
-        throw new Error(`API请求失败: ${response.status}`);
-    }
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`API请求失败: ${response.status} - ${error.error?.message || response.statusText}`);
+      }
 
-    // 设置响应头
-    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.setHeader('Transfer-Encoding', 'chunked');
+      logWithTimestamp('RESPONSE', 'API请求成功');
+      
+      // 创建数据流
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8', { fatal: true });
+      let streamBuffer = '';
 
-    // 创建数据流
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    try {
-        signal: controller.signal,
-            signal: controller.signal,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer sk-PUtZrBTu6ENsjgpjQMJWS3zs1uu7Bru0QfIeCJB3LQuAWuGc`
-      },
-      body: JSON.stringify({
-        model: "deepseek-reasoner",
-        messages: [
-          {
-            role: "system",
-            content: `你是 DeepSeek徐州公交办公助手，你具备完整的DeepSeek-R1能力。
-                     `
-          },
-          {
-            role: "user",
-            content: message
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            // 处理剩余数据
+            if (streamBuffer) {
+              const lines = streamBuffer.split('\n');
+              for (const line of lines) {
+                if (line.trim() && !line.includes('[DONE]')) {
+                  try {
+                    const jsonData = JSON.parse(line.replace(/^data: /, ''));
+                    const content = jsonData.choices?.[0]?.delta?.content;
+                    if (content) {
+                      res.write(`data: ${JSON.stringify({ content })}\n\n`);
+                    }
+                  } catch (e) {
+                    logWithTimestamp('ERROR', 'JSON解析错误', { error: e, line });
+                  }
+                }
+              }
+            }
+            break;
           }
-        ],
-        temperature: 0.8,
-        max_tokens: 16000,  // 增加 token 限制
-        stream: true  // 启用流式响应
-      })
-    });
+          
+          // 解码新的数据块
+          const chunk = decoder.decode(value, { stream: true });
+          streamBuffer += chunk;
+          
+          // 处理完整的行
+          const lines = streamBuffer.split('\n');
+          streamBuffer = lines.pop() || ''; // 保留最后一个不完整的行
+          
+          for (const line of lines) {
+            if (line.trim() && !line.includes('[DONE]')) {
+              try {
+                const jsonData = JSON.parse(line.replace(/^data: /, ''));
+                const content = jsonData.choices?.[0]?.delta?.content;
+                if (content) {
+                  res.write(`data: ${JSON.stringify({ content })}\n\n`);
+                }
+              } catch (e) {
+                logWithTimestamp('ERROR', 'JSON解析错误', { error: e, line });
+              }
+            }
+          }
+        }
 
     if (!response.ok) {
       const error = await response.json();
