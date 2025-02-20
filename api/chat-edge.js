@@ -39,8 +39,41 @@ export default async function handler(req) {
     const writer = stream.writable.getWriter();
     const encoder = new TextEncoder();
 
+    // 重试函数
+    const fetchWithRetry = async (url, options, maxRetries = 3) => {
+      let lastError;
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 30000); // 30 秒超时
+
+          const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+          });
+
+          clearTimeout(timeout);
+          return response;
+        } catch (error) {
+          lastError = error;
+          if (i < maxRetries - 1) {
+            // 指数退避等待
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+            const retryMsg = JSON.stringify({ 
+              type: 'retry',
+              attempt: i + 1,
+              maxRetries,
+              message: '连接中断，正在重试...'
+            });
+            await writer.write(encoder.encode(`data: ${retryMsg}\n\n`));
+          }
+        }
+      }
+      throw lastError;
+    };
+
     // 发起到 DeepSeek API 的请求
-    const response = await fetch('https://tbnx.plus7.plus/v1/chat/completions', {
+    const response = await fetchWithRetry('https://tbnx.plus7.plus/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -60,8 +93,8 @@ export default async function handler(req) {
             content: message
           }
         ],
-        temperature: 0.7,
-        max_tokens: 16000,  // 增加到 16000，保持在模型的 32K 上下文窗口范围内
+        temperature: 0.8,
+        max_tokens: 16000,
         stream: true
       })
     });
@@ -76,34 +109,55 @@ export default async function handler(req) {
     const processStream = async () => {
       try {
         let buffer = '';
+        let lastDataTime = Date.now();
+        const noDataTimeout = 10000; // 10 秒无数据超时
+
+        const checkTimeout = setInterval(() => {
+          if (Date.now() - lastDataTime > noDataTimeout) {
+            clearInterval(checkTimeout);
+            throw new Error('长时间未收到数据');
+          }
+        }, 1000);
+
         while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            if (buffer) {
-              const lines = buffer.split('\n');
-              for (const line of lines) {
-                if (line.trim() && line.startsWith('data: ')) {
-                  await writer.write(encoder.encode(`${line}\n\n`));
+          try {
+            const { done, value } = await reader.read();
+            if (done) {
+              clearInterval(checkTimeout);
+              if (buffer) {
+                const lines = buffer.split('\n');
+                for (const line of lines) {
+                  if (line.trim() && line.startsWith('data: ')) {
+                    await writer.write(encoder.encode(`${line}\n\n`));
+                  }
                 }
               }
+              await writer.close();
+              break;
             }
-            await writer.close();
-            break;
-          }
 
-          buffer += new TextDecoder().decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+            lastDataTime = Date.now();
+            buffer += new TextDecoder().decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
 
-          for (const line of lines) {
-            if (line.trim() && line.startsWith('data: ')) {
-              await writer.write(encoder.encode(`${line}\n\n`));
+            for (const line of lines) {
+              if (line.trim() && line.startsWith('data: ')) {
+                await writer.write(encoder.encode(`${line}\n\n`));
+              }
             }
+          } catch (error) {
+            clearInterval(checkTimeout);
+            throw error;
           }
         }
       } catch (error) {
         console.error('Stream processing error:', error);
-        const errorMsg = JSON.stringify({ error: error.message });
+        const errorMsg = JSON.stringify({ 
+          error: error.message,
+          type: 'stream_error',
+          timestamp: new Date().toISOString()
+        });
         await writer.write(encoder.encode(`data: ${errorMsg}\n\n`));
         await writer.close();
       }
@@ -126,7 +180,11 @@ export default async function handler(req) {
   } catch (error) {
     console.error('API error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }), 
+      JSON.stringify({ 
+        error: error.message,
+        type: 'api_error',
+        timestamp: new Date().toISOString()
+      }), 
       { 
         status: 500,
         headers: {
