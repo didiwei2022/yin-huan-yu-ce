@@ -6,7 +6,13 @@ async function sleep(ms) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // 设置响应头优化传输
+res.setHeader('Access-Control-Allow-Origin', '*');
+res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+res.setHeader('Cache-Control', 'no-cache, no-transform');
+res.setHeader('Connection', 'keep-alive');
+res.setHeader('X-Accel-Buffering', 'no');
+res.setHeader('Transfer-Encoding', 'chunked');
   res.setHeader('Access-Control-Allow-Methods', 'POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   // 添加时间戳的日志函数
@@ -45,13 +51,21 @@ logWithTimestamp('REQUEST', '收到新请求', {
     logWithTimestamp('SETUP', '响应头设置完成');
     let messageLength = 0; // 用于跟踪消息长度
     let chunkCount = 0;   // 用于跟踪数据块数量
+    let buffer = ''; // 用于缓存数据
+    const BUFFER_SIZE = 4; // 缓冲区大小，几个字符发送一次
 
     // 设置请求超时
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 120000); // 2分钟超时
 
     try {
-        const response = await fetch('https://tbnx.plus7.plus/v1/chat/completions', {
+        // 设置请求超时和重试机制
+const controller = new AbortController();
+const timeout = setTimeout(() => controller.abort(), 30000);
+
+try {
+    const response = await fetch('https://tbnx.plus7.plus/v1/chat/completions', {
+        signal: controller.signal,
             signal: controller.signal,
       method: 'POST',
       headers: {

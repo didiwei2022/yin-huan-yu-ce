@@ -452,6 +452,11 @@ function measureNetworkPerformance() {
     return null;
 }
 
+// 性能监控和数据缓冲
+let responseBuffer = '';
+let lastUpdateTime = 0;
+const UPDATE_INTERVAL = 100; // 更新间隔（毫秒）
+
 async function sendMessage(retryCount = 0) {
     logWithTimestamp('REQUEST', '开始发送消息', { retryCount });
                 // 移除最大响应长度限制
@@ -491,7 +496,11 @@ async function sendMessage(retryCount = 0) {
                     const startTime = performance.now();
                     console.warn('开始请求时间:', new Date().toISOString());
                     
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
                     const response = await fetch('/api/chat', {
+                        signal: controller.signal,
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -508,7 +517,10 @@ async function sendMessage(retryCount = 0) {
                         throw new Error(`API请求失败: ${response.status}`);
                     }
 
-                    const reader = response.body.getReader();
+                    // 使用原生 EventSource 替代 fetch
+                    const eventSource = new EventSource('/api/chat');
+                    
+                    eventSource.onmessage = (event) => {
                     let streamStartTime = performance.now();
                     let lastChunkTime = streamStartTime;
                     console.warn('开始接收数据流:', new Date().toISOString());
@@ -526,7 +538,9 @@ async function sendMessage(retryCount = 0) {
                         }
                     }, 1000);
 
-                    while (true) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.content) {
                         try {
                             console.log(`[${new Date().toISOString()}] 准备读取数据块...`);
                             logWithTimestamp('STREAM', '准备读取数据块');
@@ -535,7 +549,12 @@ async function sendMessage(retryCount = 0) {
                             console.warn('数据块间隔:', currentTime - lastChunkTime, 'ms');
                             lastChunkTime = currentTime;
 
-                            const { done, value } = await reader.read();
+                            assistantMessage.textContent += data.content;
+                            window.scrollTo(0, document.body.scrollHeight);
+                        }
+                    } catch (error) {
+                        console.error('消息解析错误:', error);
+                    }
                             debugLog('STREAM', '数据读取状态', {
                                 done,
                                 valueSize: value ? value.length : 0,
@@ -576,6 +595,11 @@ async function sendMessage(retryCount = 0) {
                                         }
 
                                         if (parsed.content) {
+                                            const now = Date.now();
+                                            responseBuffer += parsed.content;
+                                            
+                                            // 每100ms更新一次UI
+                                            if (now - lastUpdateTime >= UPDATE_INTERVAL) {
                                             debugLog('CONTENT', '收到内容', {
                                                 contentLength: parsed.content.length,
                                                 totalLength: fullResponse.length,
