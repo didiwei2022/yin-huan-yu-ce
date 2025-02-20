@@ -423,6 +423,7 @@
 我是 DeepSeek徐州公交办公助手，很高兴见到你！`);
 
             async function sendMessage(retryCount = 0) {
+                console.log(`[${new Date().toISOString()}] 开始发送消息，重试次数: ${retryCount}`);
                 const maxRetries = 3;
                 const timeout = 60000; // 增加到 60 秒超时
                 const noDataTimeout = 15000; // 增加到 15 秒无数据超时
@@ -473,7 +474,9 @@
 
                     while (true) {
                         try {
+                            console.log(`[${new Date().toISOString()}] 准备读取数据块...`);
                             const { done, value } = await reader.read();
+                            console.log(`[${new Date().toISOString()}] 读取数据块完成, done: ${done}, 数据大小: ${value ? value.length : 0}`);
                             
                             if (done) {
                                 clearInterval(noDataTimeoutId);
@@ -503,6 +506,7 @@
                                         }
 
                                         if (parsed.content) {
+                                            console.log(`[${new Date().toISOString()}] 收到内容更新，长度: ${parsed.content.length}`);
                                             fullResponse += parsed.content;
                                             
                                             // 处理思考标签
@@ -542,7 +546,13 @@
                         }
                     }
                 } catch (error) {
-                    console.error('发送消息时出错:', error);
+                    console.error(`[${new Date().toISOString()}] 发送消息时出错:`, error);
+                    console.log('完整错误信息:', {
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack,
+                        retryCount
+                    });
                     
                     if (error.name === 'AbortError') {
                         if (retryCount < maxRetries) {

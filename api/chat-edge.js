@@ -2,7 +2,18 @@ export const config = {
   runtime: 'edge'
 };
 
+const logWithTimestamp = (message, ...args) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${message}`, ...args);
+};
+
+const logErrorWithTimestamp = (message, ...args) => {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] ${message}`, ...args);
+};
+
 export default async function handler(req) {
+  logWithTimestamp('收到新请求');
   if (req.method !== 'POST') {
     return new Response(
       JSON.stringify({ error: '只支持POST请求' }), 
@@ -41,12 +52,14 @@ export default async function handler(req) {
 
     // 重试函数
     const fetchWithRetry = async (url, options, maxRetries = 3) => {
+      logWithTimestamp(`开始请求 DeepSeek API, 最大重试次数: ${maxRetries}`);
       let lastError;
       for (let i = 0; i < maxRetries; i++) {
         try {
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 30000);
 
+          logWithTimestamp(`尝试第 ${i + 1} 次请求...`);
           const response = await fetch(url, {
             ...options,
             signal: controller.signal
@@ -121,7 +134,9 @@ export default async function handler(req) {
         }, 1000);
 
         while (true) {
+          logWithTimestamp('准备读取数据块...');
           const { done, value } = await reader.read();
+          logWithTimestamp(`读取数据块完成, done: ${done}, 数据大小: ${value ? value.length : 0}`);
           
           if (done) {
             clearInterval(timeoutId);
@@ -172,7 +187,11 @@ export default async function handler(req) {
         }
       } catch (error) {
         clearInterval(timeoutId);
-        console.error('Stream processing error:', error);
+        logErrorWithTimestamp('流处理错误:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
         const errorMsg = JSON.stringify({ 
           error: error.message,
           type: 'stream_error',
