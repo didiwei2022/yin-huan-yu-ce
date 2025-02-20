@@ -45,7 +45,7 @@ export default async function handler(req) {
       for (let i = 0; i < maxRetries; i++) {
         try {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 30000); // 30 秒超时
+          const timeout = setTimeout(() => controller.abort(), 30000);
 
           const response = await fetch(url, {
             ...options,
@@ -53,12 +53,16 @@ export default async function handler(req) {
           });
 
           clearTimeout(timeout);
+
+          if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`API错误: ${error}`);
+          }
+
           return response;
         } catch (error) {
           lastError = error;
           if (i < maxRetries - 1) {
-            // 指数退避等待
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
             const retryMsg = JSON.stringify({ 
               type: 'retry',
               attempt: i + 1,
@@ -66,6 +70,7 @@ export default async function handler(req) {
               message: '连接中断，正在重试...'
             });
             await writer.write(encoder.encode(`data: ${retryMsg}\n\n`));
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
           }
         }
       }
@@ -99,59 +104,74 @@ export default async function handler(req) {
       })
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`DeepSeek API 错误: ${error}`);
-    }
-
     // 处理流式响应
     const reader = response.body.getReader();
+    let buffer = '';
+    let lastDataTime = Date.now();
+    const noDataTimeout = 10000;
+    let timeoutId;
+
     const processStream = async () => {
       try {
-        let buffer = '';
-        let lastDataTime = Date.now();
-        const noDataTimeout = 10000; // 10 秒无数据超时
-
-        const checkTimeout = setInterval(() => {
+        timeoutId = setInterval(() => {
           if (Date.now() - lastDataTime > noDataTimeout) {
-            clearInterval(checkTimeout);
+            clearInterval(timeoutId);
             throw new Error('长时间未收到数据');
           }
         }, 1000);
 
         while (true) {
-          try {
-            const { done, value } = await reader.read();
-            if (done) {
-              clearInterval(checkTimeout);
-              if (buffer) {
-                const lines = buffer.split('\n');
-                for (const line of lines) {
-                  if (line.trim() && line.startsWith('data: ')) {
-                    await writer.write(encoder.encode(`${line}\n\n`));
-                  }
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            clearInterval(timeoutId);
+            if (buffer) {
+              const lines = buffer.split('\n');
+              for (const line of lines) {
+                if (line.trim() && line.startsWith('data: ')) {
+                  await writer.write(encoder.encode(`${line}\n\n`));
                 }
               }
-              await writer.close();
-              break;
             }
+            await writer.close();
+            break;
+          }
 
-            lastDataTime = Date.now();
-            buffer += new TextDecoder().decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
+          lastDataTime = Date.now();
+          const chunk = new TextDecoder().decode(value, { stream: true });
+          buffer += chunk;
+          
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
-            for (const line of lines) {
-              if (line.trim() && line.startsWith('data: ')) {
+          for (const line of lines) {
+            if (line.trim() && line.startsWith('data: ')) {
+              try {
+                const data = line.slice(6);
+                if (data === '[DONE]') {
+                  await writer.write(encoder.encode(`data: [DONE]\n\n`));
+                  continue;
+                }
+
+                const parsed = JSON.parse(data);
+                if (parsed.error) {
+                  throw new Error(parsed.error.message || '服务器错误');
+                }
+
                 await writer.write(encoder.encode(`${line}\n\n`));
+              } catch (error) {
+                console.error('处理数据行错误:', error);
+                const errorMsg = JSON.stringify({ 
+                  error: error.message,
+                  type: 'parse_error'
+                });
+                await writer.write(encoder.encode(`data: ${errorMsg}\n\n`));
               }
             }
-          } catch (error) {
-            clearInterval(checkTimeout);
-            throw error;
           }
         }
       } catch (error) {
+        clearInterval(timeoutId);
         console.error('Stream processing error:', error);
         const errorMsg = JSON.stringify({ 
           error: error.message,

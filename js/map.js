@@ -35,7 +35,10 @@ function initHeatmap(map, heatmapData) {
                 0.9: '#FFA500',
                 1.0: '#FF0000'
             },
-            zIndex: 2
+            zIndex: 2,
+            canvas: {
+                willReadFrequently: true
+            }
         });
         
         heatmap.setDataSet({
@@ -47,5 +50,6 @@ function initHeatmap(map, heatmapData) {
 
 function isSupportCanvas() {
     var elem = document.createElement('canvas');
-    return !!(elem.getContext && elem.getContext('2d'));
+    const ctx = elem.getContext('2d', { willReadFrequently: true });
+    return !!(ctx);
 } 
