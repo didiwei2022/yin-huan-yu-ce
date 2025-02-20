@@ -51,7 +51,6 @@ logWithTimestamp('REQUEST', '收到新请求', {
           {
             role: "system",
             content: `你是 DeepSeek徐州公交办公助手，你具备完整的DeepSeek-R1能力。
-                     回答时，请先用<思考中...>标签简要说明你的思考过程
                      `
           },
           {

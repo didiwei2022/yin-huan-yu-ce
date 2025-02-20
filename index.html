@@ -428,7 +428,13 @@ function logWithTimestamp(type, message, data = {}) {
     console.log(`[${timestamp}] [${type}]`, message, data);
 }
 
-async function sendMessage(retryCount = 0) {
+function debugLog(type, message, data = {}) {
+                const timestamp = new Date().toISOString();
+                const logMessage = `[DEBUG ${timestamp}] [${type}] ${message}`;
+                console.warn(logMessage, data); // 使用warn级别使日志更显眼
+            }
+
+            async function sendMessage(retryCount = 0) {
     logWithTimestamp('REQUEST', '开始发送消息', { retryCount });
                 // 移除最大响应长度限制
                 console.log(`[${new Date().toISOString()}] 开始发送消息，重试次数: ${retryCount}`);
@@ -453,6 +459,17 @@ async function sendMessage(retryCount = 0) {
 
                 try {
                     logWithTimestamp('FETCH', '发起API请求', { messageLength: message.length });
+                    debugLog('NETWORK', '开始发送请求', {
+                        messageLength: message.length,
+                        timestamp: Date.now()
+                    });
+
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => {
+                        controller.abort();
+                        debugLog('ERROR', '请求超时');
+                    }, 30000);
+
                     const response = await fetch('/api/chat', {
                         method: 'POST',
                         headers: {
@@ -485,7 +502,13 @@ async function sendMessage(retryCount = 0) {
                         try {
                             console.log(`[${new Date().toISOString()}] 准备读取数据块...`);
                             logWithTimestamp('STREAM', '准备读取数据块');
+                            debugLog('STREAM', '准备读取数据');
                             const { done, value } = await reader.read();
+                            debugLog('STREAM', '数据读取状态', {
+                                done,
+                                valueSize: value ? value.length : 0,
+                                timestamp: Date.now()
+                            });
                             logWithTimestamp('STREAM', '读取数据块完成', {
                                 done,
                                 valueSize: value ? value.length : 0,
@@ -521,6 +544,11 @@ async function sendMessage(retryCount = 0) {
                                         }
 
                                         if (parsed.content) {
+                                            debugLog('CONTENT', '收到内容', {
+                                                contentLength: parsed.content.length,
+                                                totalLength: fullResponse.length,
+                                                timestamp: Date.now()
+                                            });
                                             logWithTimestamp('CONTENT', '收到内容更新', {
                                                 contentLength: parsed.content.length,
                                                 totalLength: fullResponse.length
