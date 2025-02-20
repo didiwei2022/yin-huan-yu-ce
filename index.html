@@ -457,6 +457,22 @@ let responseBuffer = '';
 let lastUpdateTime = 0;
 const UPDATE_INTERVAL = 100; // 更新间隔（毫秒）
 
+// 优化的文本处理函数
+function processText(text) {
+    const container = document.createElement('div');
+    container.style.cssText = 'display: none;';
+    container.textContent = text;
+    return container.textContent;
+}
+
+// 使用 requestAnimationFrame 更新UI
+function updateUI(element, text) {
+    requestAnimationFrame(() => {
+        element.textContent = text;
+        window.scrollTo(0, document.body.scrollHeight);
+    });
+}
+
 async function sendMessage(retryCount = 0) {
     logWithTimestamp('REQUEST', '开始发送消息', { retryCount });
                 // 移除最大响应长度限制
@@ -499,7 +515,24 @@ async function sendMessage(retryCount = 0) {
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-                    const response = await fetch('/api/chat', {
+                    // 设置请求配置
+const requestConfig = {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'no-cache'
+    },
+    body: JSON.stringify({
+        message: userInput.value.trim()
+    })
+};
+
+const response = await fetch('/api/chat', requestConfig);
+
+if (!response.ok) {
+    throw new Error(`请求失败: ${response.status}`);
+}
                         signal: controller.signal,
                         method: 'POST',
                         headers: {

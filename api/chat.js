@@ -49,10 +49,13 @@ logWithTimestamp('REQUEST', '收到新请求', {
       'Connection': 'keep-alive'
     });
     logWithTimestamp('SETUP', '响应头设置完成');
-    let messageLength = 0; // 用于跟踪消息长度
-    let chunkCount = 0;   // 用于跟踪数据块数量
-    let buffer = ''; // 用于缓存数据
-    const BUFFER_SIZE = 4; // 缓冲区大小，几个字符发送一次
+    // 数据传输相关变量
+    let messageLength = 0;
+    let chunkCount = 0;
+    let buffer = '';
+    let lastFlushTime = Date.now();
+    const FLUSH_INTERVAL = 500; // 每500ms刷新一次
+    const MAX_BUFFER_SIZE = 1024; // 最大缓冲区1KB
 
     // 设置请求超时
     const controller = new AbortController();
@@ -64,7 +67,44 @@ const controller = new AbortController();
 const timeout = setTimeout(() => controller.abort(), 30000);
 
 try {
-    const response = await fetch('https://tbnx.plus7.plus/v1/chat/completions', {
+    // 设置请求配置
+    const requestConfig = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive'
+        },
+        body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: messages,
+            temperature: 0.7,
+            max_tokens: 4000,
+            stream: true
+        }),
+        compress: true,
+        timeout: 30000
+    };
+
+    const response = await fetch('https://tbnx.plus7.plus/v1/chat/completions', requestConfig);
+
+    // 检查响应状态
+    if (!response.ok) {
+        throw new Error(`API请求失败: ${response.status}`);
+    }
+
+    // 设置响应头
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.setHeader('Transfer-Encoding', 'chunked');
+
+    // 创建数据流
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    try {
         signal: controller.signal,
             signal: controller.signal,
       method: 'POST',
