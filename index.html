@@ -431,6 +431,7 @@
 
                 // 显示用户消息
                 appendMessage('user', message);
+                appendMessage('assistant', ''); // 创建空的助手消息容器
 
                 try {
                     const response = await fetch('/api/chat', {
@@ -447,20 +448,46 @@
 
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
-                    let assistantMessage = '';
-                    let isFirstChunk = true;
+                    let fullResponse = '';
+                    let currentThinking = '';
+                    let isThinking = false;
 
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
 
                         const chunk = decoder.decode(value);
-                        if (isFirstChunk) {
-                            appendMessage('assistant', '');
-                            isFirstChunk = false;
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                if (data === '[DONE]') continue;
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    if (parsed.content) {
+                                        fullResponse += parsed.content;
+                                        
+                                        // 处理思考标签
+                                        const thinkMatch = fullResponse.match(/<思考中...>(.*?)<\/思考中...>/s);
+                                        if (thinkMatch && !isThinking) {
+                                            isThinking = true;
+                                            currentThinking = thinkMatch[1].trim();
+                                        }
+
+                                        // 更新显示
+                                        const displayContent = isThinking ? 
+                                            `<div class="thinking">💭 ${currentThinking}</div>${fullResponse.replace(/<思考中...>.*?<\/思考中...>/s, '')}` :
+                                            fullResponse;
+
+                                        updateLastMessage(displayContent);
+                                    }
+                                } catch (e) {
+                                    console.error('解析响应数据失败:', e);
+                                }
+                            }
                         }
-                        assistantMessage += chunk;
-                        updateLastMessage(assistantMessage);
                     }
 
                 } catch (error) {
@@ -474,42 +501,24 @@
                 }
             }
 
-            function appendMessage(role, content) {
+            function appendMessage(type, content) {
                 const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${role}`;
-                
-                if (role === 'assistant') {
-                    // 处理思考过程和回答
-                    const thinkMatch = content.match(/<think>(.*?)<\/think>/s);
-                    if (thinkMatch) {
-                        const thinking = thinkMatch[1].trim();
-                        const answer = content.replace(/<think>.*?<\/think>/s, '').trim();
-                        
-                        const thinkingDiv = document.createElement('div');
-                        thinkingDiv.className = 'thinking-indicator';
-                        thinkingDiv.textContent = `💭 思考过程：${thinking}`;
-                        messageDiv.appendChild(thinkingDiv);
-                        
-                        const answerDiv = document.createElement('div');
-                        answerDiv.className = 'answer';
-                        answerDiv.textContent = answer;
-                        messageDiv.appendChild(answerDiv);
-                    } else {
-                        messageDiv.textContent = content;
-                    }
+                messageDiv.className = `message ${type}`;
+                if (type === 'error') {
+                    messageDiv.innerHTML = `<span class="error-icon">❌</span> ${content}`;
                 } else {
-                    messageDiv.textContent = content;
+                    messageDiv.innerHTML = content;
                 }
-                
                 messagesContainer.appendChild(messageDiv);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 return messageDiv;
             }
 
             function updateLastMessage(content) {
-                const lastMessage = messagesContainer.lastChild;
+                const lastMessage = messagesContainer.lastElementChild;
                 if (lastMessage && lastMessage.classList.contains('assistant')) {
                     lastMessage.innerHTML = content;
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 }
             }
 
