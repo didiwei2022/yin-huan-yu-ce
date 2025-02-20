@@ -52,14 +52,33 @@ export default async function handler(req) {
 
     // 重试函数
     const fetchWithRetry = async (url, options, maxRetries = 3) => {
+      const CHUNK_SIZE = 1000; // 每次处理1000字符
+      const messages = options.body ? JSON.parse(options.body).messages : [];
+      
+      // 分块处理长消息
+      if (messages.length > 0 && messages[messages.length - 1].content.length > CHUNK_SIZE) {
+        const longMessage = messages[messages.length - 1].content;
+        const chunks = [];
+        for (let i = 0; i < longMessage.length; i += CHUNK_SIZE) {
+          chunks.push(longMessage.slice(i, i + CHUNK_SIZE));
+        }
+        messages[messages.length - 1].content = chunks[0];
+        logWithTimestamp(`消息已分块，共 ${chunks.length} 块`);
+      }
+      
+      options.body = JSON.stringify({
+        ...JSON.parse(options.body),
+        messages
+      });
       logWithTimestamp(`开始请求 DeepSeek API, 最大重试次数: ${maxRetries}`);
       let lastError;
       for (let i = 0; i < maxRetries; i++) {
         try {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 30000);
+          const timeout = setTimeout(() => controller.abort(), 60000); // 增加超时时间到60秒
 
           logWithTimestamp(`尝试第 ${i + 1} 次请求...`);
+          logWithTimestamp(`尝试第 ${i + 1} 次请求，消息长度: ${options.body.length}`);
           const response = await fetch(url, {
             ...options,
             signal: controller.signal
