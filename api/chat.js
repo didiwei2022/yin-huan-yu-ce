@@ -1,3 +1,10 @@
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000; // 2秒
+
+async function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST');
@@ -39,7 +46,13 @@ logWithTimestamp('REQUEST', '收到新请求', {
     let messageLength = 0; // 用于跟踪消息长度
     let chunkCount = 0;   // 用于跟踪数据块数量
 
-    const response = await fetch('https://tbnx.plus7.plus/v1/chat/completions', {
+    // 设置请求超时
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000); // 2分钟超时
+
+    try {
+        const response = await fetch('https://tbnx.plus7.plus/v1/chat/completions', {
+            signal: controller.signal,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -114,7 +127,16 @@ logWithTimestamp('REQUEST', '收到新请求', {
     }
 
     res.end();
-  } catch (error) {
+              break; // 成功则退出重试循环
+        } catch (error) {
+            lastError = error;
+            retryCount++;
+            
+            if (retryCount < MAX_RETRIES) {
+                console.error(`请求失败，第${retryCount}次重试`, error);
+                await sleep(RETRY_DELAY * retryCount); // 递增重试延迟
+                continue;
+            }
     const errorInfo = {
       message: error.message,
       stack: error.stack,

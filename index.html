@@ -434,7 +434,25 @@ function debugLog(type, message, data = {}) {
                 console.warn(logMessage, data); // 使用warn级别使日志更显眼
             }
 
-            async function sendMessage(retryCount = 0) {
+            // 性能监控函数
+function measureNetworkPerformance() {
+    const timing = performance.getEntriesByType('resource').pop();
+    if (timing) {
+        const metrics = {
+            dnsTime: timing.domainLookupEnd - timing.domainLookupStart,
+            connectTime: timing.connectEnd - timing.connectStart,
+            sslTime: timing.secureConnectionStart > 0 ? (timing.connectEnd - timing.secureConnectionStart) : 0,
+            ttfb: timing.responseStart - timing.requestStart,
+            downloadTime: timing.responseEnd - timing.responseStart,
+            totalTime: timing.duration
+        };
+        console.warn('网络性能指标:', metrics);
+        return metrics;
+    }
+    return null;
+}
+
+async function sendMessage(retryCount = 0) {
     logWithTimestamp('REQUEST', '开始发送消息', { retryCount });
                 // 移除最大响应长度限制
                 console.log(`[${new Date().toISOString()}] 开始发送消息，重试次数: ${retryCount}`);
@@ -470,6 +488,9 @@ function debugLog(type, message, data = {}) {
                         debugLog('ERROR', '请求超时');
                     }, 30000);
 
+                    const startTime = performance.now();
+                    console.warn('开始请求时间:', new Date().toISOString());
+                    
                     const response = await fetch('/api/chat', {
                         method: 'POST',
                         headers: {
@@ -479,11 +500,18 @@ function debugLog(type, message, data = {}) {
                         signal: controller.signal
                     });
 
+                    const endTime = performance.now();
+                    console.warn('请求总耗时:', endTime - startTime, 'ms');
+                    measureNetworkPerformance();
+
                     if (!response.ok) {
                         throw new Error(`API请求失败: ${response.status}`);
                     }
 
                     const reader = response.body.getReader();
+                    let streamStartTime = performance.now();
+                    let lastChunkTime = streamStartTime;
+                    console.warn('开始接收数据流:', new Date().toISOString());
                     let fullResponse = '';
                     let currentThinking = '';
                     let isThinking = false;
@@ -503,6 +531,10 @@ function debugLog(type, message, data = {}) {
                             console.log(`[${new Date().toISOString()}] 准备读取数据块...`);
                             logWithTimestamp('STREAM', '准备读取数据块');
                             debugLog('STREAM', '准备读取数据');
+                            const currentTime = performance.now();
+                            console.warn('数据块间隔:', currentTime - lastChunkTime, 'ms');
+                            lastChunkTime = currentTime;
+
                             const { done, value } = await reader.read();
                             debugLog('STREAM', '数据读取状态', {
                                 done,
