@@ -51,8 +51,8 @@ export default async function handler(req) {
     const encoder = new TextEncoder();
 
     // 重试函数
-    const fetchWithRetry = async (url, options, maxRetries = 3) => {
-      const CHUNK_SIZE = 1000; // 每次处理1000字符
+    const fetchWithRetry = async (url, options, maxRetries = 5) => { // 增加重试次数
+      const CHUNK_SIZE = 2000; // 增加到2000字符，减少分块数量
       const messages = options.body ? JSON.parse(options.body).messages : [];
       
       // 分块处理长消息
@@ -75,7 +75,7 @@ export default async function handler(req) {
       for (let i = 0; i < maxRetries; i++) {
         try {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 120000); // 增加超时时间到120秒 // 增加超时时间到60秒
+          const timeout = setTimeout(() => controller.abort(), 180000); // 增加到3分钟 // 增加超时时间到120秒 // 增加超时时间到60秒
 
           logWithTimestamp(`尝试第 ${i + 1} 次请求...`);
           logWithTimestamp(`尝试第 ${i + 1} 次请求，消息长度: ${options.body.length}`);
@@ -143,15 +143,30 @@ export default async function handler(req) {
     const reader = response.body.getReader();
     let buffer = '';
     let lastDataTime = Date.now();
-    const noDataTimeout = 10000;
+    const noDataTimeout = 30000; // 增加到30秒
     let timeoutId;
 
     const processStream = async () => {
       try {
+        let retryCount = 0;
+        const maxStreamRetries = 3;
+        
         timeoutId = setInterval(() => {
           if (Date.now() - lastDataTime > noDataTimeout) {
-            clearInterval(timeoutId);
-            throw new Error('长时间未收到数据');
+            if (retryCount < maxStreamRetries) {
+              retryCount++;
+              lastDataTime = Date.now(); // 重置计时器
+              const retryMsg = JSON.stringify({
+                type: 'stream_retry',
+                attempt: retryCount,
+                maxRetries: maxStreamRetries,
+                message: '流处理中断，正在重试...'
+              });
+              writer.write(encoder.encode(`data: ${retryMsg}\n\n`)).catch(console.error);
+            } else {
+              clearInterval(timeoutId);
+              throw new Error('长时间未收到数据，超过重试次数');
+            }
           }
         }, 1000);
 
@@ -162,15 +177,21 @@ export default async function handler(req) {
           
           if (done) {
             clearInterval(timeoutId);
-            if (buffer) {
-              const lines = buffer.split('\n');
-              for (const line of lines) {
-                if (line.trim() && line.startsWith('data: ')) {
-                  await writer.write(encoder.encode(`${line}\n\n`));
+            try {
+              if (buffer) {
+                const lines = buffer.split('\n');
+                for (const line of lines) {
+                  if (line.trim() && line.startsWith('data: ')) {
+                    await writer.write(encoder.encode(`${line}\n\n`));
+                  }
                 }
               }
+              // 发送完成标记
+              await writer.write(encoder.encode('data: {"type":"complete"}\n\n'));
+              await writer.close();
+            } catch (error) {
+              console.error('关闭流时发生错误:', error);
             }
-            await writer.close();
             break;
           }
 
@@ -178,24 +199,47 @@ export default async function handler(req) {
           const chunk = new TextDecoder().decode(value, { stream: true });
           buffer += chunk;
           
-          const lines = buffer.split('\n');
+          // 使用正则表达式确保完整的JSON对象
+          const lines = buffer.split(/\n(?=data:)/);
           buffer = lines.pop() || '';
+          
+          // 尝试合并不完整的JSON
+          let incompleteJson = '';
+          let isPartialJson = false;
 
           for (const line of lines) {
             if (line.trim() && line.startsWith('data: ')) {
               try {
-                const data = line.slice(6);
+                let data = line.slice(6).trim();
+                
+                // 处理不完整的JSON
+                if (isPartialJson) {
+                  incompleteJson += data;
+                  data = incompleteJson;
+                  isPartialJson = false;
+                  incompleteJson = '';
+                }
+                
                 if (data === '[DONE]') {
                   await writer.write(encoder.encode(`data: [DONE]\n\n`));
                   continue;
                 }
 
-                const parsed = JSON.parse(data);
-                if (parsed.error) {
-                  throw new Error(parsed.error.message || '服务器错误');
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.error) {
+                    throw new Error(parsed.error.message || '服务器错误');
+                  }
+                  await writer.write(encoder.encode(`data: ${JSON.stringify(parsed)}\n\n`));
+                } catch (jsonError) {
+                  if (jsonError instanceof SyntaxError) {
+                    // JSON不完整，保存并等待下一个块
+                    isPartialJson = true;
+                    incompleteJson = data;
+                    continue;
+                  }
+                  throw jsonError;
                 }
-
-                await writer.write(encoder.encode(`${line}\n\n`));
               } catch (error) {
                 console.error('处理数据行错误:', error);
                 const errorMsg = JSON.stringify({ 
