@@ -51,8 +51,8 @@ export default async function handler(req, res) {
             content: message
           }
         ],
-        temperature: 0.7,
-        max_tokens: 4000,  // 增加 token 限制
+        temperature: 0.8,
+        max_tokens: 16000,  // 增加 token 限制
         stream: true  // 启用流式响应
       })
     });

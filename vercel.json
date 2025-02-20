@@ -3,10 +3,34 @@
   "routes": [
     {
       "src": "/api/chat",
-      "dest": "/api/chat.js"
+      "dest": "/api/chat-edge"
     },
     {
       "handle": "filesystem"
+    }
+  ],
+  "functions": {
+    "api/chat-edge": {
+      "runtime": "edge"
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-transform"
+        },
+        {
+          "key": "Connection",
+          "value": "keep-alive"
+        },
+        {
+          "key": "X-Accel-Buffering",
+          "value": "no"
+        }
+      ]
     }
   ]
 }
