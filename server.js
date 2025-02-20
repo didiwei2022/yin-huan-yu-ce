@@ -1,4 +1,6 @@
 import express from 'express';
+import { createServer } from 'http';
+import { initWebSocket } from './api/websocket.js';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -8,6 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
+const server = createServer(app);
 
 // 启用 CORS 和 JSON 解析
 app.use(cors());
@@ -29,7 +32,10 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
+// 初始化WebSocket
+initWebSocket(server);
+
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`服务器运行在 http://localhost:${PORT}`);
   console.log('当前工作目录:', __dirname);
   console.log('环境:', process.env.NODE_ENV || 'development');

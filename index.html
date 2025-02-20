@@ -473,6 +473,58 @@ function updateUI(element, text) {
     });
 }
 
+let ws;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 3;
+const RECONNECT_DELAY = 1000;
+
+function connectWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    
+    ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+        console.log('已连接到WebSocket服务器');
+        reconnectAttempts = 0;
+    };
+    
+    ws.onclose = () => {
+        console.log('WebSocket连接关闭');
+        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            setTimeout(() => {
+                reconnectAttempts++;
+                connectWebSocket();
+            }, RECONNECT_DELAY * reconnectAttempts);
+        }
+    };
+    
+    ws.onerror = (error) => {
+        console.error('WebSocket错误:', error);
+    };
+    
+    ws.onmessage = (event) => {
+        try {
+            const response = JSON.parse(event.data);
+            switch (response.type) {
+                case 'content':
+                    updateUI(assistantMessage, response.data);
+                    break;
+                case 'error':
+                    console.error('服务器错误:', response.error);
+                    break;
+                case 'done':
+                    console.log('响应完成');
+                    break;
+            }
+        } catch (error) {
+            console.error('消息处理错误:', error);
+        }
+    };
+}
+
+connectWebSocket();
+
 async function sendMessage(retryCount = 0) {
     logWithTimestamp('REQUEST', '开始发送消息', { retryCount });
                 // 移除最大响应长度限制
