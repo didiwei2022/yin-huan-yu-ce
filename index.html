@@ -17,6 +17,7 @@
     <!-- 原有的样式表 -->
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/weather-controls.css">
+    <link rel="stylesheet" href="/css/chat.css">
 
     <meta name="referrer" content="no-referrer">
     <style>
@@ -94,6 +95,25 @@
 
 
 
+    <!-- DeepSeek公交办公助手 -->
+    <div id="chatContainer" class="chat-container">
+        <div class="chat-header">
+            <span>DeepSeek徐州公交办公助手</span>
+            <button id="minimizeChat" class="minimize-button">−</button>
+        </div>
+        <div class="quick-action-grid">
+            <button class="quick-action" data-prompt="我是公交行业员工，我的部门是 [营运/安全/党建]，需要撰写一份 [新闻稿/产品文案/活动文案]，主题是 [主题]。请根据行业特点，章节结构如下：[1、2、3…]，整体字数控制在 [1000字左右]，请用清晰、简洁且有吸引力的语言表达。">✍️ 帮我写作</button>
+            <button class="quick-action" data-prompt="请帮我润色以下文案，可适当优化句式，提高可读性，并增强逻辑性。以下是需要润色的内容：">🎨 文案润色</button>
+            <button class="quick-action" data-prompt="我需要制作一份 [主题] 的 PPT，主要用途是 [用途，如汇报、培训、宣传等]。请结合【公交行业背景】，给出合理的章节结构，并详细列出每页的内容框架，包括关键要点、可视化建议（如表格、图表、图片）等，确保逻辑清晰、表达精准、易于展示。">📊 PPT 制作</button>
+            <button class="quick-action" data-prompt="我是公交行业员工，在工作中遇到问题需要解答。请根据 公交行业相关政策、运营管理、安全规范、事故处理、车辆维护、服务提升 等方面的知识，提供专业、精准、实用的建议。我的问题是：">❓ 问题答疑</button>
+        </div>
+        <div id="messages" class="messages-container"></div>
+        <div class="input-container">
+            <input type="text" id="chatInput" class="chat-input" placeholder="请输入您的问题...">
+            <button id="sendButton" class="send-button">发送</button>
+        </div>
+    </div>
+
     <!-- 配置脚本 -->
     <script>
         window.APP_CONFIG = {
@@ -111,6 +131,7 @@
     <script src="/js/map.js"></script>
     <script src="/js/weather.js"></script>
     <script src="/js/risk-analysis.js"></script>
+    <script src="/js/chat.js"></script>
     <script>
         let map;
         document.addEventListener('DOMContentLoaded', () => {

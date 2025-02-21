@@ -97,16 +97,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 最小化/最大化功能
-    minimizeBtn.addEventListener('click', () => {
+    function toggleMinimize(e) {
+        // 如果点击的是输入框或发送按钮，不触发最小化
+        if (e && (e.target === chatInput || e.target === sendButton)) {
+            return;
+        }
+        
         chatContainer.classList.toggle('minimized');
         minimizeBtn.textContent = chatContainer.classList.contains('minimized') ? '+' : '−';
+    }
+
+    // 最小化按钮点击事件
+    minimizeBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // 阻止事件冒泡
+        toggleMinimize();
     });
 
     // 点击标题栏也可以最小化/展开
-    document.querySelector('.chat-header').addEventListener('click', (e) => {
-        if (e.target !== minimizeBtn) {
-            chatContainer.classList.toggle('minimized');
-            minimizeBtn.textContent = chatContainer.classList.contains('minimized') ? '+' : '−';
-        }
+    document.querySelector('.chat-header').addEventListener('click', toggleMinimize);
+
+    const quickActionButtons = document.querySelectorAll('.quick-action');
+
+    quickActionButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const prompt = button.getAttribute('data-prompt');
+            chatInput.value = prompt;
+            chatInput.focus();
+        });
     });
 });
