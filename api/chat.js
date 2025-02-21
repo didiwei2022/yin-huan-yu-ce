@@ -1,6 +1,6 @@
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000; // 2秒
-const TIMEOUT_DURATION = 55000; // 设置为略小于 Vercel 60s 限制
+const TIMEOUT_DURATION = 290000; // 设置为略小于 Vercel 300s 限制
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
