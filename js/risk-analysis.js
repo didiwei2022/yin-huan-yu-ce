@@ -14,50 +14,32 @@ class RiskAnalysis {
     }
 
     createRankingPanel() {
-        const panel = document.createElement('div');
-        panel.className = 'risk-ranking';
-        panel.innerHTML = `
-            <h3 class="panel-title">东部公交隐患排序</h3>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>序号</th>
-                        <th>地点</th>
-                        <th>风险指数</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        `;
-        document.body.appendChild(panel);
-        this.rankingPanel = panel;
+        this.rankingPanel = document.querySelector('.risk-ranking');
+        if (!this.rankingPanel) {
+            console.error('未找到风险排序面板');
+            return;
+        }
     }
 
     createViolationPanel() {
-        const panel = document.createElement('div');
-        panel.className = 'violation-hotspots';
-        panel.innerHTML = `
-            <h3 class="panel-title">2024年违章十大高发路段</h3>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>序号</th>
-                        <th>地点</th>
-                        <th>次数</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${this.getViolationData().map((item, index) => `
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td>${item.location}</td>
-                            <td>${item.count}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
-        document.body.appendChild(panel);
+        this.violationPanel = document.querySelector('.violation-hotspots');
+        if (!this.violationPanel) {
+            console.error('未找到违章面板');
+            return;
+        }
+        
+        // 加载违章数据
+        const tbody = this.violationPanel.querySelector('tbody');
+        const data = this.getViolationData();
+        tbody.innerHTML = data.map((item, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${item.location}</td>
+                <td>${item.count}</td>
+            </tr>
+        `).join('');
+
+
     }
 
     getViolationData() {

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>徐州公交AI隐患预测系统</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <!-- 天气信息面板 -->
+    <div id="weather-panel" class="panel">
+        <h3>天气信息</h3>
+        <div id="weather-info">
+            <p>温度: <span id="temperature">--</span>°C</p>
+            <p>湿度: <span id="humidity">--</span>%</p>
+            <p>风速: <span id="wind-speed">--</span>m/s</p>
+            <p>天气: <span id="weather-condition">--</span></p>
+        </div>
+    </div>
+
+    <!-- 风险分析面板 -->
+    <div id="risk-panel" class="panel">
+        <h3>风险分析</h3>
+        <div id="risk-info">
+            <p>当前风险等级: <span id="risk-level">--</span></p>
+            <p>主要风险因素: <span id="risk-factors">--</span></p>
+            <p>建议措施: <span id="suggested-actions">--</span></p>
+        </div>
+    </div>
+
+    <!-- 聊天窗口 -->
+    <div id="chat-container" class="chat-container">
+        <div class="chat-header" onclick="toggleChat()">
+            <span>AI助手</span>
+            <button id="minimize-btn">-</button>
+        </div>
+        <div class="chat-body">
+            <div id="chat-messages" class="chat-messages"></div>
+            <div class="chat-input-container">
+                <input type="text" id="chat-input" placeholder="输入消息...">
+                <button onclick="sendMessage()">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // WebSocket连接
+        let ws = new WebSocket('ws://' + window.location.host);
+        let chatMessages = document.getElementById('chat-messages');
+        let chatInput = document.getElementById('chat-input');
+        let currentMessageDiv = null;
+
+        ws.onopen = () => {
+            console.log('WebSocket连接已建立');
+            appendMessage('系统', '连接成功！我是徐州公交AI助手，请问有什么可以帮您？');
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'chunk') {
+                // 如果是新消息的开始
+                if (!currentMessageDiv) {
+                    currentMessageDiv = document.createElement('div');
+                    currentMessageDiv.className = 'message assistant';
+                    chatMessages.appendChild(currentMessageDiv);
+                }
+                
+                // 添加新的内容
+                currentMessageDiv.textContent += data.content;
+                
+                // 滚动到底部
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            } else if (data.type === 'done') {
+                // 消息结束，重置currentMessageDiv
+                currentMessageDiv = null;
+            } else if (data.type === 'error') {
+                appendMessage('系统', '发送消息时出现错误，请稍后重试。');
+                console.error('错误:', data.error);
+            }
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket连接已关闭');
+            appendMessage('系统', '连接已断开，请刷新页面重新连接。');
+        };
+
+        function appendMessage(sender, message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender.toLowerCase()}`;
+            messageDiv.textContent = message;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function sendMessage() {
+            const message = chatInput.value.trim();
+            if (message) {
+                appendMessage('user', message);
+                ws.send(JSON.stringify({
+                    type: 'chat',
+                    message: message
+                }));
+                chatInput.value = '';
+            }
+        }
+
+        // 按Enter发送消息
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // 切换聊天窗口
+        function toggleChat() {
+            const chatBody = document.querySelector('.chat-body');
+            const minimizeBtn = document.getElementById('minimize-btn');
+            if (chatBody.style.display === 'none') {
+                chatBody.style.display = 'flex';
+                minimizeBtn.textContent = '-';
+            } else {
+                chatBody.style.display = 'none';
+                minimizeBtn.textContent = '+';
+            }
+        }
+    </script>
+</body>
+</html>

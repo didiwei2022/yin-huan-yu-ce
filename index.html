@@ -17,321 +17,71 @@
     <!-- 原有的样式表 -->
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/weather-controls.css">
-    <link rel="stylesheet" href="/css/chat.css">
+
     <meta name="referrer" content="no-referrer">
     <style>
-        /* 隐藏面板的样式 */
-        @media (max-width: 768px) { /* 根据需要调整屏幕宽度 */
-            .risk-ranking,
-            .violation-hotspots {
-                display: none; /* 默认隐藏面板内容 */
-            }
+        /* 面板样式 */
+        .risk-ranking,
+        .violation-hotspots {
+            position: absolute;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
         }
-        /* DeepSeek 对话框样式更新 */
-        .chat-container {
-            position: fixed;
+
+        .risk-ranking {
+            top: 20px;
+            right: 20px;
+        }
+
+        .violation-hotspots {
             bottom: 20px;
-            right: 30px;
-            width: 900px;
-            height: 80vh;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-            transition: transform 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            max-height: calc(100vh - 40px); /* 确保不超过视口高度 */
+            right: 20px;
         }
 
-        .chat-container.minimized {
-            transform: translateY(calc(100% - 50px));
-        }
-
-        .chat-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
-            background: #4a90e2;
-            color: white;
-            border-radius: 12px 12px 0 0;
-            cursor: pointer;
-        }
-
-        .chat-title {
-            font-weight: bold;
+        .panel-title {
+            margin: 0 0 15px 0;
             font-size: 16px;
+            color: #333;
         }
 
-        .chat-controls button {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 0 4px;
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        .chat-body {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0; /* 允许内容收缩 */
-            height: calc(100% - 50px); /* 减去header高度 */
-            overflow: hidden;
-        }
-
-        .messages-container {
-            flex: 1 1 auto;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            overflow-y: auto;
-            padding: 15px;
-            background: #f8f9fa;
-            gap: 12px;
-            height: calc(100% - 60px);
-            scrollbar-width: thin;
-            scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-            padding-bottom: 20px; /* 确保底部内容不被遗漏 */
-        }
-
-        /* Webkit浏览器的滚动条样式 */
-        .messages-container::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .messages-container::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .messages-container::-webkit-scrollbar-thumb {
-            background-color: rgba(0, 0, 0, 0.2);
-            border-radius: 3px;
-        }
-
-        .input-container {
-            flex: 0 0 60px; /* 固定高度，不参与伸缩 */
-            display: flex;
-            padding: 15px;
-            border-top: 1px solid #eee;
-            background: white;
-            position: relative;
-            z-index: 1;
-        }
-
-        .chat-input {
-            flex: 1;
-            padding: 10px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            margin-right: 10px;
-            font-size: 14px;
-        }
-
-        .chat-input:focus {
-            outline: none;
-            border-color: #4a90e2;
-        }
-
-        .send-button {
-            padding: 10px 20px;
-            background: #4a90e2;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .message {
-            margin: 8px 0;
-            padding: 12px;
-            border-radius: 8px;
-            max-width: 85%;
-            position: relative;
-            word-wrap: break-word;
-            white-space: pre-wrap;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .message.thinking {
-            background: #f5f5f5;
-            color: #666;
-            font-style: italic;
-            animation: pulse 1.5s infinite;
-        }
-
-        .thinking-indicator {
-            font-style: italic;
-            color: #666;
-            margin-bottom: 8px;
+        .data-table th,
+        .data-table td {
             padding: 8px;
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        .message.assistant {
-            margin-right: auto;
-            background: white;
-            border: 1px solid #e0e0e0;
-            padding: 12px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .answer {
-            white-space: pre-wrap;
-            line-height: 1.6;
-            margin-top: 8px;
-            padding: 12px;
-            background: #ffffff;
-            border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
-        }
-
-        .message.user {
-            margin-left: auto;
-            background: #e3f2fd;
-            color: #1565c0;
-            padding: 10px;
-            align-self: flex-end;  /* 用户消息靠右对齐 */
-        }
-
-        .message.assistant {
-            margin-right: auto;
-            background: transparent;
-            align-self: flex-start;  /* AI消息靠左对齐 */
-            width: 100%;  /* 让思考过程和回答保持同样宽度 */
-        }
-
-        .message.assistant .thinking-indicator {
-            color: #666;
-            font-style: italic;
-            /* 添加背景色和内边距 */
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 8px 8px 0 0;
-            font-size: 0.9em;
-            margin-bottom: 1px;  /* 减小思考过程和回答之间的间距 */
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        }
-
-        /* 添加回答内容的样式 */
-        .message.assistant .answer {
-            padding: 10px;
-            background: white;
-            border-radius: 0 0 8px 8px;
-            line-height: 1.5;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .message.error {
-            background: #fee;
-            color: #c00;
-            margin: 8px auto;
-        }
-
-        @media (max-width: 768px) {
-            .chat-container {
-                bottom: 0;
-                width: 100%;
-                right: 0;
-                height: 90vh;
-                max-height: 90vh;
-                border-radius: 12px 12px 0 0;
-            }
-
-            .chat-body {
-                height: calc(100% - 45px);
-            }
-
-            .messages-container {
-                height: calc(100% - 50px);
-                padding: 10px;
-                padding-bottom: 20px;
-            }
-
-            .input-container {
-                flex: 0 0 50px;
-                padding: 8px;
-            }
-
-            .message {
-                max-width: 95%;
-                padding: 8px;
-            }
-
-            .answer {
-                padding: 8px;
-                font-size: 14px;
-            }
-        }
-
-        /* 中等屏幕适配 */
-        @media (min-height: 900px) {
-            .messages-container {
-                height: 500px;  /* 在较高的屏幕上使用固定高度 */
-            }
-        }
-
-        /* 在现有样式中添加 */
-        .quick-actions {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            padding: 15px;
-            background: #f8f9fa;
+            text-align: left;
             border-bottom: 1px solid #eee;
         }
 
-        .quick-action-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 12px;
-            background: white;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid #eee;
-        }
-
-        .quick-action-item:hover {
-            background: #f0f7ff;
-            transform: translateY(-2px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .quick-action-item .icon {
-            font-size: 24px;
-            margin-bottom: 8px;
-        }
-
-        .quick-action-item .label {
-            font-size: 14px;
-            color: #333;
-            text-align: center;
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: bold;
         }
 
         /* 移动端适配 */
         @media (max-width: 768px) {
-            .quick-actions {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 8px;
-                padding: 10px;
+            .risk-ranking,
+            .violation-hotspots {
+                position: fixed;
+                max-width: none;
+                width: 90%;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+
+            .risk-ranking {
+                top: 10px;
+            }
+
+            .violation-hotspots {
+                bottom: 10px;
             }
         }
     </style>
@@ -340,41 +90,9 @@
     <div id="container"></div>
     <div id="title"><b>AI神经网络公交隐患预测系统</b></div>
     
-    <!-- DeepSeek对话框 -->
-    <div class="chat-container" id="chatContainer">
-        <div class="chat-header">
-            <div class="chat-title">DeepSeek交控办公助手</div>
-            <div class="chat-controls">
-                <button class="minimize-btn" id="minimizeChat">−</button>
-            </div>
-        </div>
-        <!-- 添加快捷操作网格 -->
-        <div class="quick-actions">
-            <div class="quick-action-item" data-prompt="我的职业是[输入职业]，帮我写一份关于[目的：项目进展总结、团队工作成果或其他]的总结汇报，需要包含[项目进展总结]、[工作内容与成果]和[成果]。">
-                <div class="icon">📊</div>
-                <div class="label">总结汇报</div>
-            </div>
-            <div class="quick-action-item" data-prompt="请帮我整理一份会议纪要，会议主题是[主题]，参会人员包括[人员]，主要讨论了以下内容：[内容]。请按照标准会议纪要格式整理。">
-                <div class="icon">📝</div>
-                <div class="label">会议纪要</div>
-            </div>
-            <div class="quick-action-item" data-prompt="请帮我创作一份[类型：新闻稿/产品文案/活动文案]，主题是[主题]，目标受众是[受众]，需要突出[重点内容]。">
-                <div class="icon">✍️</div>
-                <div class="label">文案生成</div>
-            </div>
-            <div class="quick-action-item" data-prompt="请帮我润色以下文案，使其更加专业、流畅：[粘贴需要润色的文案]">
-                <div class="icon">🎨</div>
-                <div class="label">文案润色</div>
-            </div>
-        </div>
-        <div class="chat-body" id="chatBody">
-            <div class="messages-container" id="messages"></div>
-            <div class="input-container">
-                <input type="text" class="chat-input" id="chatInput" placeholder="请输入您的问题..." />
-                <button class="send-button" id="sendButton">发送</button>
-            </div>
-        </div>
-    </div>
+
+
+
 
     <!-- 配置脚本 -->
     <script>
@@ -410,182 +128,9 @@
                     console.error('系统初始化失败:', error);
                 }
             }, 1000);
-
-            // 初始化Deepseek对话功能
-            const chatInput = document.getElementById('chatInput');
-            const sendButton = document.getElementById('sendButton');
-            const messagesContainer = document.getElementById('messages');
-
-            // 添加欢迎消息
-            appendMessage('assistant', `<think>准备就绪</think>
-我是 DeepSeek交控办公助手，很高兴见到你！`);
-
-            async function sendMessage() {
-                const message = chatInput.value.trim();
-                if (!message) return;
-
-                // 添加用户消息到界面
-                appendMessage('user', message);
-                chatInput.value = '';
-                sendButton.disabled = true;
-
-                // 添加思考中的提示
-                const thinkingMessage = appendMessage('assistant thinking', '正在思考...');
-                const startTime = Date.now();
-                
-                const timer = setInterval(() => {
-                    const seconds = Math.floor((Date.now() - startTime) / 1000);
-                    thinkingMessage.textContent = `正在思考...（${seconds}秒）`;
-                }, 1000);
-
-                try {
-                    const response = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'text/event-stream',
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ message })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('请求失败');
-                    }
-
-                    // 移除思考中的消息
-                    thinkingMessage.remove();
-                    clearInterval(timer);
-
-                    // 创建新的消息容器
-                    const messageDiv = document.createElement('div');
-                    messageDiv.className = 'message assistant';
-                    messagesContainer.appendChild(messageDiv);
-
-                    let fullResponse = '';
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-
-                        const chunk = decoder.decode(value);
-                        const lines = chunk.split('\n');
-
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6);
-                                if (data === '[DONE]') continue;
-
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    if (parsed.error) {
-                                        throw new Error(parsed.error);
-                                    }
-                                    if (parsed.content) {
-                                        fullResponse += parsed.content;
-                                        // 处理思考过程和回答
-                                        const thinkMatch = fullResponse.match(/<think>(.*?)<\/think>/s);
-                                        if (thinkMatch) {
-                                            const thinking = thinkMatch[1].trim();
-                                            const answer = fullResponse.replace(/<think>.*?<\/think>/s, '').trim();
-                                            
-                                            messageDiv.innerHTML = `
-                                                <div class="thinking-indicator">💭 思考过程：${thinking}</div>
-                                                <div class="answer">${answer}</div>
-                                            `;
-                                        } else {
-                                            messageDiv.textContent = fullResponse;
-                                        }
-                                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                                    }
-                                } catch (e) {
-                                    console.error('解析响应数据失败:', e);
-                                }
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error('错误详情:', error);
-                    thinkingMessage.className = 'message error';
-                    thinkingMessage.textContent = `错误: ${error.message}`;
-                    clearInterval(timer);
-                } finally {
-                    sendButton.disabled = false;
-                }
-            }
-
-            function appendMessage(role, content) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${role}`;
-                
-                if (role === 'assistant') {
-                    // 处理思考过程和回答
-                    const thinkMatch = content.match(/<think>(.*?)<\/think>/s);
-                    if (thinkMatch) {
-                        const thinking = thinkMatch[1].trim();
-                        const answer = content.replace(/<think>.*?<\/think>/s, '').trim();
-                        
-                        const thinkingDiv = document.createElement('div');
-                        thinkingDiv.className = 'thinking-indicator';
-                        thinkingDiv.textContent = `💭 思考过程：${thinking}`;
-                        messageDiv.appendChild(thinkingDiv);
-                        
-                        const answerDiv = document.createElement('div');
-                        answerDiv.className = 'answer';
-                        answerDiv.textContent = answer;
-                        messageDiv.appendChild(answerDiv);
-                    } else {
-                        messageDiv.textContent = content;
-                    }
-                } else {
-                    messageDiv.textContent = content;
-                }
-                
-                messagesContainer.appendChild(messageDiv);
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                return messageDiv;
-            }
-
-            sendButton.addEventListener('click', sendMessage);
-            chatInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
-
-            // 添加最小化功能
-            const chatContainer = document.getElementById('chatContainer');
-            const minimizeBtn = document.getElementById('minimizeChat');
-            const chatBody = document.getElementById('chatBody');
-
-            minimizeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                chatContainer.classList.toggle('minimized');
-                minimizeBtn.textContent = chatContainer.classList.contains('minimized') ? '+' : '−';
-            });
-
-            // 点击标题栏也可以最小化/展开
-            document.querySelector('.chat-header').addEventListener('click', () => {
-                chatContainer.classList.toggle('minimized');
-                minimizeBtn.textContent = chatContainer.classList.contains('minimized') ? '+' : '−';
-            });
-
-            // 添加快捷操作处理
-            document.querySelectorAll('.quick-action-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const prompt = item.dataset.prompt;
-                    const chatInput = document.getElementById('chatInput');
-                    chatInput.value = prompt;
-                    chatInput.focus();
-                    
-                    // 自动调整输入框高度
-                    chatInput.style.height = 'auto';
-                    chatInput.style.height = chatInput.scrollHeight + 'px';
-                });
-            });
         });
+    </script>
+
     </script>
     <!-- 东部公交隐患排序面板 -->
     <div class="risk-ranking">
@@ -614,13 +159,7 @@
                 </tr>
             </thead>
             <tbody>
-                ${this.getViolationData().map((item, index) => `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>${item.location}</td>
-                        <td>${item.count}</td>
-                    </tr>
-                `).join('')}
+                <!-- 违章数据将通过 JavaScript 动态加载 -->
             </tbody>
         </table>
     </div>

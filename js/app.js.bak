@@ -1,0 +1,143 @@
+// 地图初始化
+function initMap() {
+    const map = L.map('map').setView([34.2044, 117.2859], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+    }).addTo(map);
+    return map;
+}
+
+// WebSocket连接管理
+class WebSocketManager {
+    constructor() {
+        this.connect();
+        this.setupChatUI();
+    }
+
+    connect() {
+        this.ws = new WebSocket('ws://' + window.location.host);
+        this.ws.onopen = () => {
+            console.log('WebSocket连接已建立');
+            this.appendMessage('系统', '连接成功！我是徐州公交AI助手，请问有什么可以帮您？');
+        };
+
+        this.ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'chunk') {
+                if (!this.currentMessageDiv) {
+                    this.currentMessageDiv = document.createElement('div');
+                    this.currentMessageDiv.className = 'message assistant';
+                    this.chatMessages.appendChild(this.currentMessageDiv);
+                }
+                
+                this.currentMessageDiv.textContent += data.content;
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            } else if (data.type === 'done') {
+                this.currentMessageDiv = null;
+            } else if (data.type === 'error') {
+                this.appendMessage('系统', '发送消息时出现错误，请稍后重试。');
+                console.error('错误:', data.error);
+            }
+        };
+
+        this.ws.onclose = () => {
+            console.log('WebSocket连接已关闭');
+            this.appendMessage('系统', '连接已断开，请刷新页面重新连接。');
+        };
+    }
+
+    setupChatUI() {
+        this.chatMessages = document.getElementById('chat-messages');
+        this.chatInput = document.getElementById('chat-input');
+        this.currentMessageDiv = null;
+
+        // 发送按钮点击事件
+        document.querySelector('.chat-input-container button').onclick = () => this.sendMessage();
+
+        // 输入框Enter键事件
+        this.chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.sendMessage();
+            }
+        });
+
+        // 最小化按钮点击事件
+        document.getElementById('minimize-btn').onclick = () => this.toggleChat();
+    }
+
+    appendMessage(sender, message) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender.toLowerCase()}`;
+        messageDiv.textContent = message;
+        this.chatMessages.appendChild(messageDiv);
+        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+    }
+
+    sendMessage() {
+        const message = this.chatInput.value.trim();
+        if (message) {
+            this.appendMessage('user', message);
+            this.ws.send(JSON.stringify({
+                type: 'chat',
+                message: message
+            }));
+            this.chatInput.value = '';
+        }
+    }
+
+    toggleChat() {
+        const chatBody = document.querySelector('.chat-body');
+        const minimizeBtn = document.getElementById('minimize-btn');
+        if (chatBody.style.display === 'none') {
+            chatBody.style.display = 'flex';
+            minimizeBtn.textContent = '-';
+        } else {
+            chatBody.style.display = 'none';
+            minimizeBtn.textContent = '+';
+        }
+    }
+}
+
+// 天气和风险信息管理
+class InfoManager {
+    constructor() {
+        this.setupUpdateIntervals();
+        this.updateAll();
+    }
+
+    updateWeatherInfo() {
+        document.getElementById('temperature').textContent = Math.round(Math.random() * 20 + 10);
+        document.getElementById('humidity').textContent = Math.round(Math.random() * 40 + 40);
+        document.getElementById('wind-speed').textContent = (Math.random() * 5).toFixed(1);
+        const conditions = ['晴朗', '多云', '小雨', '阴天'];
+        document.getElementById('weather-condition').textContent = conditions[Math.floor(Math.random() * conditions.length)];
+    }
+
+    updateRiskInfo() {
+        const levels = ['低', '中', '高'];
+        const factors = ['路面湿滑', '能见度低', '车流量大', '设备故障'];
+        const actions = ['减速行驶', '保持距离', '加强巡检', '准备备用设备'];
+        
+        document.getElementById('risk-level').textContent = levels[Math.floor(Math.random() * levels.length)];
+        document.getElementById('risk-factors').textContent = factors[Math.floor(Math.random() * factors.length)];
+        document.getElementById('suggested-actions').textContent = actions[Math.floor(Math.random() * actions.length)];
+    }
+
+    setupUpdateIntervals() {
+        setInterval(() => this.updateWeatherInfo(), 5000);
+        setInterval(() => this.updateRiskInfo(), 7000);
+    }
+
+    updateAll() {
+        this.updateWeatherInfo();
+        this.updateRiskInfo();
+    }
+}
+
+// 初始化应用
+document.addEventListener('DOMContentLoaded', () => {
+    const map = initMap();
+    const wsManager = new WebSocketManager();
+    const infoManager = new InfoManager();
+});
