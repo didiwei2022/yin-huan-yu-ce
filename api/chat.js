@@ -1,5 +1,5 @@
 const MAX_RETRIES = 3;
-const RETRY_DELAY = 2000; // 2秒
+const RETRY_DELAY = 2000; // 2秒test
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
