@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>徐州东部公交隐患预测系统 - AI神经网络分析</title>
-    <meta name="description" content="徐州东部公交隐患预测系统，基于AI神经网络分析，提供实时天气监测、违章高发路段分析和风险预警等功能。">
-    <meta name="keywords" content="徐州公交,隐患预测,AI分析,天气监测,违章分析,交通安全">
+    <title>徐州东部公交隐患预测系统 - Deepseek</title>
+    <meta name="description" content="徐州东部公交隐患预测系统，Deepseek，提供实时天气监测、违章高发路段分析和风险预警等功能。">
+    <meta name="keywords" content="Deepseek,徐州公交,隐患预测,AI分析,天气监测,违章分析,交通安全">
     <meta name="author" content="顾迪">
     <!-- Open Graph 标签 -->
     <meta property="og:title" content="徐州东部公交隐患预测系统">
@@ -67,6 +67,46 @@
         }
 
         /* 移动端适配 */
+        /* 网站介绍样式 */
+        .about-section {
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            z-index: 1000;
+        }
+
+        .about-section h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .about-section p {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #666;
+        }
+
+        .about-section .contact-info {
+            font-size: 13px;
+            color: #888;
+        }
+
+        .about-section .contact-info a {
+            color: #4a90e2;
+            text-decoration: none;
+        }
+
+        .about-section .contact-info a:hover {
+            text-decoration: underline;
+        }
+
         @media (max-width: 768px) {
             .risk-ranking,
             .violation-hotspots {
@@ -83,6 +123,14 @@
 
             .violation-hotspots {
                 bottom: 10px;
+            }
+
+            .about-section {
+                left: 50%;
+                transform: translateX(-50%);
+                width: 90%;
+                max-width: none;
+                bottom: 70px;
             }
         }
     </style>
@@ -168,21 +216,15 @@
         </table>
     </div>
 
-    <!-- 2024年违章十大高发路段面板 -->
-    <div class="violation-hotspots">
-        <h3 class="panel-title">2024年违章十大高发路段</h3>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>序号</th>
-                    <th>地点</th>
-                    <th>次数</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- 违章数据将通过 JavaScript 动态加载 -->
-            </tbody>
-        </table>
+
+    <!-- 关于本网站 -->
+    <div class="about-section">
+        <h3>关于本项目</h3>
+        <p>本网站是徐州交控集团第三届青年人才创新大赛项目作品——“AI与智能网联双引擎-公交安全智能化转型的创新实践”。该项目基于公交车采集的碰撞预警和历史事故等数据，利用深度学习进行训练，通过热力图直观呈现数据分析结果。同时具备AI助手功能，已接入满血版Deepseek-R1大模型。</p>
+        <div class="contact-info">
+            <p>制作者：徐州公交集团 顾迪</p>
+            <p>联系邮箱：<a href="mailto:1164144970@qq.com">1164144970@qq.com</a></p>
+        </div>
     </div>
 </body>
 </html>
