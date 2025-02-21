@@ -34,7 +34,8 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json',
           'Accept-Encoding': 'gzip, deflate, br',
           'Accept-Charset': 'utf-8',
-          'Connection': 'keep-alive'
+          'Connection': 'keep-alive',
+          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
         },
         body: JSON.stringify({
           model: 'deepseek-chat',
