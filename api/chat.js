@@ -1,5 +1,6 @@
 const MAX_RETRIES = 3;
-const RETRY_DELAY = 2000; // 2秒test
+const RETRY_DELAY = 2000; // 2秒
+const TIMEOUT_DURATION = 55000; // 设置为略小于 Vercel 60s 限制
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -24,8 +25,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '消息内容不能为空' });
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    let controller = new AbortController(); // 将 controller 移到这里
+    let timeoutId;
 
     try {
       const requestConfig = {
@@ -61,6 +62,16 @@ export default async function handler(req, res) {
 
       while (retryCount < MAX_RETRIES && !success) {
         try {
+          // 每次重试前重置 controller 和 timeout
+          if (timeoutId) clearTimeout(timeoutId);
+          controller = new AbortController();
+          timeoutId = setTimeout(() => {
+            controller.abort();
+            console.log(`[API] 请求超时，第${retryCount + 1}次尝试`);
+          }, TIMEOUT_DURATION);
+
+          requestConfig.signal = controller.signal;
+          
           const response = await fetch('https://tbnx.plus7.plus/v1/chat/completions', requestConfig);
           
           if (!response.ok) {
